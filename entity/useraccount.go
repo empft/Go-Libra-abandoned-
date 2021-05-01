@@ -2,11 +2,11 @@ package entity
 
 type UserAccount struct {
 	Id				  int
-	VerificationEmail string
+	InvitationalEmail *string
 	Username          string
 	DisplayName       string
 	PasswordHash      []byte
-	Email             string
+	Email             *string
 }
 
 type UserAccountRepository interface {
