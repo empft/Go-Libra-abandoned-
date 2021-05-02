@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+option go_package = "github.com/stevealexrs/Go-Libra/service/account";
+
+package service;
+
+import "google/protobuf/wrappers.proto";
+
+service Public {
+
+  rpc RequestInvitationCode(InvitationRequest) returns {}
+
+  rpc IsUsernameTaken(User) returns (google.protobuf.BoolValue) {}
+
+  rpc RegisterAccount(RegisterRequest) returns (Result) {}
+
+  rpc LoginAccount(LoginRequest) returns (Result) {}
+
+  rpc ForgetAccount(ForgetRequest) returns (Result) {}
+}
+
+message InvitationRequest {
+  string email_address = 1;
+}
+
+message User {
+  string name = 1;
+}
+
+message RegisterRequest {
+  string invitation_email = 1;
+  string invitation_code = 2;
+  string username = 3;
+  string display_name = 4;
+  string password = 5;
+  string email = 6;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 1;
+}
+
+message ForgetRequest {
+
+  enum Field {
+    USERNAME = 0;
+    PASSWORD = 1;
+  }
+
+  Field field = 1;
+}
+
+message Result {
+  enum Error {
+    UNKNOWN_ERROR = 0;
+    USERNAME_TAKEN = 1;
+    INVITATION_TAKEN = 2;
+    INVITATION_INVALID = 3;
+    EMAIL_TAKEN = 4;
+    CREDENTIALS_INVALID = 5;
+    RATE_LIMIT = 6;
+  }
+
+  repeated Error error = 1;
+}
+
+
