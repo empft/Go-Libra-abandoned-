@@ -2,7 +2,7 @@ package entity
 
 type UserAccount struct {
 	Id				  int
-	InvitationalEmail *string
+	InvitationEmail *string
 	Username          string
 	DisplayName       string
 	PasswordHash      []byte
