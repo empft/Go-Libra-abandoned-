@@ -62,14 +62,15 @@ func (handler *RedisCacheHandler) Store(ctx context.Context, key string, item in
 	return err
 }
 
-func (handler *RedisCacheHandler) Fetch(ctx context.Context, key string, item interface{}) error {
+func (handler *RedisCacheHandler) Fetch(ctx context.Context, key string) (interface{}, error) {
+	var item interface{}
 	err := handler.Conn.Get(
 		ctx,
 		key,
 		&item,
 	)
 
-	return err
+	return item, err
 }
 
 func (handler *RedisCacheHandler) Exist(ctx context.Context, key string) bool {
