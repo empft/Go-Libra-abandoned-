@@ -1,16 +1,14 @@
 syntax = "proto3";
 
-option go_package = "github.com/stevealexrs/Go-Libra/service/account";
+option go_package = "github.com/stevealexrs/Go-Libra/service/public";
 
-package service;
-
-import "google/protobuf/wrappers.proto";
+package public;
 
 service Public {
 
-  rpc RequestInvitationCode(InvitationRequest) returns {}
+  rpc RequestInvitationCode(InvitationRequest) returns (Result) {}
 
-  rpc IsUsernameTaken(User) returns (google.protobuf.BoolValue) {}
+  rpc IsUsernameTaken(User) returns (BoolValue) {}
 
   rpc RegisterAccount(RegisterRequest) returns (Result) {}
 
@@ -38,7 +36,7 @@ message RegisterRequest {
 
 message LoginRequest {
   string username = 1;
-  string password = 1;
+  string password = 2;
 }
 
 message ForgetRequest {
@@ -49,6 +47,10 @@ message ForgetRequest {
   }
 
   Field field = 1;
+}
+
+message BoolValue {
+  bool value = 1;
 }
 
 message Result {

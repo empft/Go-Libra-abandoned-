@@ -15,4 +15,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
 	golang.org/x/exp v0.0.0-20210503015746-b3083d562e1d // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	google.golang.org/grpc v1.37.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0 // indirect
+	google.golang.org/protobuf v1.26.0 // indirect
 )
