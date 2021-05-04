@@ -68,7 +68,7 @@ func apiRouter() chi.Router {
 		r.Post("/username", checkUsername)
 	})
 
-	r.Post("login", func )
+	// r.Post("login", func )
 
 	return r
 }
