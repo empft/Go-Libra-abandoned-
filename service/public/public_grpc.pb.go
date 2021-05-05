@@ -18,11 +18,11 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PublicClient interface {
-	RequestInvitationCode(ctx context.Context, in *InvitationRequest, opts ...grpc.CallOption) (*Result, error)
+	RequestInvitationCode(ctx context.Context, in *InvitationRequest, opts ...grpc.CallOption) (*Empty, error)
 	IsUsernameTaken(ctx context.Context, in *User, opts ...grpc.CallOption) (*BoolValue, error)
-	RegisterAccount(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*Result, error)
-	LoginAccount(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Result, error)
-	ForgetAccount(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*Result, error)
+	RegisterAccount(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*Empty, error)
+	LoginAccount(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Empty, error)
+	ForgetAccount(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type publicClient struct {
@@ -33,8 +33,8 @@ func NewPublicClient(cc grpc.ClientConnInterface) PublicClient {
 	return &publicClient{cc}
 }
 
-func (c *publicClient) RequestInvitationCode(ctx context.Context, in *InvitationRequest, opts ...grpc.CallOption) (*Result, error) {
-	out := new(Result)
+func (c *publicClient) RequestInvitationCode(ctx context.Context, in *InvitationRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/public.Public/RequestInvitationCode", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -51,8 +51,8 @@ func (c *publicClient) IsUsernameTaken(ctx context.Context, in *User, opts ...gr
 	return out, nil
 }
 
-func (c *publicClient) RegisterAccount(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*Result, error) {
-	out := new(Result)
+func (c *publicClient) RegisterAccount(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/public.Public/RegisterAccount", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -60,8 +60,8 @@ func (c *publicClient) RegisterAccount(ctx context.Context, in *RegisterRequest,
 	return out, nil
 }
 
-func (c *publicClient) LoginAccount(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Result, error) {
-	out := new(Result)
+func (c *publicClient) LoginAccount(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/public.Public/LoginAccount", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -69,8 +69,8 @@ func (c *publicClient) LoginAccount(ctx context.Context, in *LoginRequest, opts 
 	return out, nil
 }
 
-func (c *publicClient) ForgetAccount(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*Result, error) {
-	out := new(Result)
+func (c *publicClient) ForgetAccount(ctx context.Context, in *ForgetRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/public.Public/ForgetAccount", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -82,11 +82,11 @@ func (c *publicClient) ForgetAccount(ctx context.Context, in *ForgetRequest, opt
 // All implementations must embed UnimplementedPublicServer
 // for forward compatibility
 type PublicServer interface {
-	RequestInvitationCode(context.Context, *InvitationRequest) (*Result, error)
+	RequestInvitationCode(context.Context, *InvitationRequest) (*Empty, error)
 	IsUsernameTaken(context.Context, *User) (*BoolValue, error)
-	RegisterAccount(context.Context, *RegisterRequest) (*Result, error)
-	LoginAccount(context.Context, *LoginRequest) (*Result, error)
-	ForgetAccount(context.Context, *ForgetRequest) (*Result, error)
+	RegisterAccount(context.Context, *RegisterRequest) (*Empty, error)
+	LoginAccount(context.Context, *LoginRequest) (*Empty, error)
+	ForgetAccount(context.Context, *ForgetRequest) (*Empty, error)
 	mustEmbedUnimplementedPublicServer()
 }
 
@@ -94,19 +94,19 @@ type PublicServer interface {
 type UnimplementedPublicServer struct {
 }
 
-func (UnimplementedPublicServer) RequestInvitationCode(context.Context, *InvitationRequest) (*Result, error) {
+func (UnimplementedPublicServer) RequestInvitationCode(context.Context, *InvitationRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestInvitationCode not implemented")
 }
 func (UnimplementedPublicServer) IsUsernameTaken(context.Context, *User) (*BoolValue, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IsUsernameTaken not implemented")
 }
-func (UnimplementedPublicServer) RegisterAccount(context.Context, *RegisterRequest) (*Result, error) {
+func (UnimplementedPublicServer) RegisterAccount(context.Context, *RegisterRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterAccount not implemented")
 }
-func (UnimplementedPublicServer) LoginAccount(context.Context, *LoginRequest) (*Result, error) {
+func (UnimplementedPublicServer) LoginAccount(context.Context, *LoginRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LoginAccount not implemented")
 }
-func (UnimplementedPublicServer) ForgetAccount(context.Context, *ForgetRequest) (*Result, error) {
+func (UnimplementedPublicServer) ForgetAccount(context.Context, *ForgetRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ForgetAccount not implemented")
 }
 func (UnimplementedPublicServer) mustEmbedUnimplementedPublicServer() {}
