@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+option go_package = "github.com/stevealexrs/Go-Libra/connector/public";
+
+package public;
+
+service Public {
+
+  rpc RequestInvitationCode(InvitationRequest) returns (Empty) {}
+
+  rpc IsUsernameTaken(User) returns (BoolValue) {}
+
+  rpc RegisterAccount(RegisterRequest) returns (Empty) {}
+
+  rpc LoginAccount(LoginRequest) returns (Empty) {}
+
+  rpc ForgetAccount(ForgetRequest) returns (Empty) {}
+}
+
+message InvitationRequest {
+  string email_address = 1;
+}
+
+message User {
+  string name = 1;
+}
+
+message RegisterRequest {
+  string invitation_email = 1;
+  string invitation_code = 2;
+  string username = 3;
+  string display_name = 4;
+  string password = 5;
+  string email = 6;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message ForgetRequest {
+
+  enum Field {
+    USERNAME = 0;
+    PASSWORD = 1;
+  }
+
+  Field field = 1;
+  string email = 2;
+}
+
+message BoolValue {
+  bool value = 1;
+}
+
+message Empty {}
+
