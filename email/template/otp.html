@@ -1,0 +1,26 @@
+{{ template "header.html" }}
+<div>
+    Here is your requested code.
+    <div style="
+        font-family:arial,helvetica,sans-serif;
+        color:#313131;
+        text-align:left;
+        font-size:30px;
+        line-height:70px;
+    ">
+        <p style="
+            background:#faf9fa;
+            border:1px solid;
+            border-style:solid;
+            border-color:#dad8de;
+            display:inline;
+            padding-bottom:5px;
+            padding-left:5px;
+            padding-right:5px;
+            padding-top:5px;
+        ">
+            {{ .Code }}
+        </p>
+    </div>
+</div>
+{{ template "footer.html"}}
