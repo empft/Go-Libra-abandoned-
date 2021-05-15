@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	pb "github.com/stevealexrs/Go-Libra/service/public"
+	pb "github.com/stevealexrs/Go-Libra/connector/public"
 )
 
 type publicServer struct {

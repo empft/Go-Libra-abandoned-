@@ -48,6 +48,7 @@ message ForgetRequest {
 
   Field field = 1;
   string email = 2;
+  string username = 3;
 }
 
 message BoolValue {
