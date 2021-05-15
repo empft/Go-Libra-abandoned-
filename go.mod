@@ -3,6 +3,7 @@ module github.com/stevealexrs/Go-Libra
 go 1.16
 
 require (
+	github.com/elithrar/simple-scrypt v1.3.0
 	github.com/go-chi/chi/v5 v5.0.3
 	github.com/go-chi/hostrouter v0.2.0
 	github.com/go-redis/cache/v8 v8.4.0
