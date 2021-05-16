@@ -73,7 +73,7 @@ func NewRecoveryEmailVerification(userId int, email string) (*RecoveryEmailVerif
 }
 
 type UserAccountRepository interface {
-	Store(account UserAccount) error
+	Store(account UserAccount) (int, error)
 	FetchById(id int) (UserAccount, error)
 	FetchByUsername(name string) (UserAccount, error)
 	Update(account UserAccount) error

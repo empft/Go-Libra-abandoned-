@@ -3,12 +3,8 @@ package service
 import (
 	"errors"
 
-	"github.com/stevealexrs/Go-Libra/email"
 	"github.com/stevealexrs/Go-Libra/entity"
-	"github.com/stevealexrs/Go-Libra/random"
 )
-
-// Business logic should be included here
 
 type RegistrationForm struct {
 	Invitation entity.InvitationEmail
@@ -21,6 +17,10 @@ type RegistrationForm struct {
 func sendInvitationMail(invitation entity.InvitationEmail) error {
 	//mail := email.NewSender("127.0.0.1", "", "", "")
 	//return mail.SendOTP([]string{invitation.Email}, email.OTP{invitation.Code})
+	return nil
+}
+
+func sendVerificationMail(entity.RecoveryEmailVerification) error {
 	return nil
 }
 
@@ -45,21 +45,16 @@ func (creator *UserCreator) CreateInvitation(email string) error {
 	}
 
 	if exist {
-		return errors.New("Invitation has already been sent.")
+		return errors.New("invitation has already been sent")
 	}
 
-	code, err := random.OTP()
+	invitation, err := entity.NewInvitationEmail(email)
 	if err != nil {
 		return err
 	}
-		
-	invitation := entity.InvitationEmail{
-		Email: email, 
-		Code: code,
-	}
 
-	sendInvitationMail(invitation)
-	creator.InvitationRepo.Store(invitation)
+	sendInvitationMail(*invitation)
+	creator.InvitationRepo.Store(*invitation)
 
 	return nil
 }
@@ -69,42 +64,74 @@ func (creator *UserCreator) CreateAccount(form RegistrationForm) error {
 	if err != nil {
 		return err
 	}
-
 	if exist {
-		return errors.New("Username exists")
+		return errors.New("username exists")
 	}
 
 	exist, err = creator.InvitationEmailExist(form.Invitation.Email)
 	if err != nil {
 		return err
 	}
-
 	if exist {
-		return errors.New("Invitation Email is already used")
+		return errors.New("invitation email is used")
 	}
 
-	hash, err := entity.UserAccount.GenerateHash(form.Password)
+	code, err := creator.InvitationRepo.Fetch(form.Invitation.Email)
+	if err != nil {
+		return err
+	}
+	if form.Invitation.Code != code {
+		return errors.New("invitation email code is invalid")
+	}
+
+	acc, err := entity.NewUserAccount(
+		form.Invitation.Email,
+		form.Username,
+		form.DisplayName,
+		form.Password,
+		form.Email,
+	)
+	if err != nil {
+		return err
+	}
+	_, err = creator.UserRepo.Store(*acc)
 	if err != nil {
 		return err
 	}
 
-	creator.UserRepo.Store(entity.UserAccount{
-		Id: nil,
-		InvitationEmail: &form.Invitation.Email,
-		Username: form.Username,
-		DisplayName: form.DisplayName,
-		
+	return nil
+}
 
-	})
+func (creator *UserCreator) VerifyEmail(name string) error {
+	acc, err := creator.UserRepo.FetchByUsername(name)
+	if err != nil {
+		return err
+	}
 
+	email, err := acc.UnverifiedEmail()
+	if err != nil {
+		return err
+	}
+	
+	emailVerification, err := entity.NewRecoveryEmailVerification(
+		*acc.Id,
+		email,
+	)
+	if err != nil {
+		return err
+	}
 
-	emailToken, err := random.Token16Byte()
-	creator.EmailRepo.Store()
+	err = creator.EmailRepo.Store(*emailVerification)
+	if err != nil {
+		return err
+	}
 
+	err = sendVerificationMail(*emailVerification)
+	if err != nil {
+		return err
+	}
 
-
-
-
+	return nil
 }
 
 type AccountRecovery struct {
