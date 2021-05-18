@@ -24,6 +24,14 @@ func sendVerificationMail(entity.RecoveryEmailVerification) error {
 	return nil
 }
 
+func sendUsernameReminderMail(names []string) error {
+	return nil
+}
+
+func sendPasswordResetMail(userId int, token string) error {
+	return nil
+}
+
 type UserCreator struct {
 	UserRepo entity.UserAccountRepository
 	InvitationRepo entity.InvitationEmailRepository
@@ -52,11 +60,13 @@ func (creator *UserCreator) CreateInvitation(email string) error {
 	if err != nil {
 		return err
 	}
-
-	sendInvitationMail(*invitation)
-	creator.InvitationRepo.Store(*invitation)
-
-	return nil
+	
+	err = creator.InvitationRepo.Store(*invitation)
+	if err != nil {
+		return err
+	}
+	
+	return sendInvitationMail(*invitation)
 }
 
 func (creator *UserCreator) CreateAccount(form RegistrationForm) error {
@@ -95,27 +105,32 @@ func (creator *UserCreator) CreateAccount(form RegistrationForm) error {
 		return err
 	}
 	_, err = creator.UserRepo.Store(*acc)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-func (creator *UserCreator) VerifyEmail(name string) error {
+func (creator *UserCreator) RequestEmailVerification(name string) error {
 	acc, err := creator.UserRepo.FetchByUsername(name)
 	if err != nil {
 		return err
 	}
 
-	email, err := acc.UnverifiedEmail()
+	exist, err := creator.EmailRepo.Exist(*acc.Id, acc.UnverifiedEmail)
 	if err != nil {
 		return err
 	}
-	
+
+	if exist {
+		emailVerification, err := creator.EmailRepo.Fetch(*acc.Id, acc.UnverifiedEmail)
+		if err != nil {
+			return err
+		}
+
+		return sendVerificationMail(emailVerification)
+	}
+
 	emailVerification, err := entity.NewRecoveryEmailVerification(
 		*acc.Id,
-		email,
+		acc.UnverifiedEmail,
 	)
 	if err != nil {
 		return err
@@ -126,19 +141,99 @@ func (creator *UserCreator) VerifyEmail(name string) error {
 		return err
 	}
 
-	err = sendVerificationMail(*emailVerification)
+	return sendVerificationMail(*emailVerification)
+}
+
+func (creator *UserCreator) VerifyEmail(userId int, email, token string) error {
+	emailVerification, err := creator.EmailRepo.Fetch(userId, email)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	if emailVerification.Token != token {
+		return errors.New("invalid token")
+	}
+
+	acc, err := creator.UserRepo.FetchById(userId)
+	if err != nil {
+		return err
+	}
+
+	return acc.VerifyEmail(email)
 }
 
-type AccountRecovery struct {
+type AccountRecoveryHelper struct {
+	UserRepo entity.UserAccountRepository
+	RecoveryRepo entity.AccountRecoveryRepository
+}
 
+func (helper *AccountRecoveryHelper) RequestUsernameReminder(email string) error {
+	accList, err := helper.UserRepo.FetchByEmail(email)
+	if err != nil {
+		return err
+	}
+
+	names := []string{}
+	for _, acc := range accList {
+		names = append(names, acc.Username)
+	}
+	return sendUsernameReminderMail(names)
+}
+
+func (helper *AccountRecoveryHelper) RequestPasswordReset(name string) error {
+	acc, err := helper.UserRepo.FetchByUsername(name)
+	if err != nil {
+		return err
+	}
+
+	exist, err := helper.RecoveryRepo.Exist(*acc.Id)
+	if err != nil {
+		return err
+	}
+
+	if exist {
+		recovery, err := helper.RecoveryRepo.Fetch(*acc.Id)
+		if err != nil {
+			return err
+		}
+
+		return sendPasswordResetMail(*acc.Id, recovery.Token)
+	}
+
+	recovery, err := entity.NewAccountRecovery(*acc.Id)
+	if err != nil {
+		return err
+	}
+
+	err = helper.RecoveryRepo.Store(*recovery)
+	if err != nil {
+		return err
+	}
+
+	return sendPasswordResetMail(*acc.Id, recovery.Token)
+}
+
+func (helper *AccountRecoveryHelper) ResetPassword(userId int, token, password string) error {
+	recovery, err := helper.RecoveryRepo.Fetch(userId)
+	if err != nil {
+		return err
+	}
+
+	if recovery.Token != token {
+		return errors.New("invalid reset token")
+	}
+
+	acc, err := helper.UserRepo.FetchById(userId)
+	if err != nil {
+		return err
+	}
+
+	return acc.UpdatePassword(password)
+}
+
+type AccountSessionManager struct {
+	UserRepo entity.UserAccountRepository
 }
 
 
 
-type AccountSession struct {
-}

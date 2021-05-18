@@ -13,8 +13,8 @@ type UserAccount struct {
 	Username        string
 	DisplayName     string
 	passwordHash    []byte
-	email           string
-	emailVerified   bool
+	Email           string
+	UnverifiedEmail string
 }
 
 func NewUserAccount(invitationEmail, username, displayName, password, email string) (*UserAccount, error) {
@@ -29,8 +29,8 @@ func NewUserAccount(invitationEmail, username, displayName, password, email stri
 		Username: username,
 		DisplayName: displayName,
 		passwordHash: hash,
-		email: email,
-		emailVerified: false,
+		Email: "",
+		UnverifiedEmail: email,
 	}
 	return acc, nil
 }
@@ -72,10 +72,29 @@ func NewRecoveryEmailVerification(userId int, email string) (*RecoveryEmailVerif
 	return obj, nil
 }
 
+type AccountRecovery struct {
+	UserId int
+	Token string
+}
+
+func NewAccountRecovery(userId int) (*AccountRecovery, error) {
+	token, err := random.Token20Byte()
+	if err != nil {
+		return nil, err
+	}
+
+	obj := &AccountRecovery{
+		UserId: userId,
+		Token: token,
+	}
+	return obj, nil
+}
+
 type UserAccountRepository interface {
 	Store(account UserAccount) (int, error)
 	FetchById(id int) (UserAccount, error)
 	FetchByUsername(name string) (UserAccount, error)
+	FetchByEmail(email string) ([]UserAccount, error)
 	Update(account UserAccount) error
 	HasUsername(name string) (bool, error)
 	HasInvitationEmail(email string) (bool, error)
@@ -89,26 +108,14 @@ type InvitationEmailRepository interface {
 
 type RecoveryEmailVerificationRepository interface {
 	Store(verification RecoveryEmailVerification) error
-	Fetch(token string) (RecoveryEmailVerification, error)
+	Fetch(userId int, email string) (RecoveryEmailVerification, error)
+	Exist(userId int, email string) (bool, error)
 }
 
-func (user *UserAccount) Email() (string, error) {
-	if !user.emailVerified {
-		return "", errors.New("no verified email")
-	}
-
-	return user.email, nil
-}
-
-func (user *UserAccount) UnverifiedEmail() (string, error) {
-	 if user.emailVerified {
-		 return "", errors.New("no unverified email")
-	 }
-	 return user.email, nil
-}
-
-func (user *UserAccount) IsEmailVerified() bool {
-	return user.emailVerified
+type AccountRecoveryRepository interface {
+	Store(recovery AccountRecovery) error
+	Fetch(userId int) (AccountRecovery, error)
+	Exist(userId int) (bool, error)
 }
 
 func (user *UserAccount) ComparePassword(password string) (bool, error) {
@@ -128,25 +135,22 @@ func (user *UserAccount) UpdatePassword(password string) error {
 	return nil
 }
 
-// Email is not retrievable until verified
+// Email must be verified after changing
 func (user *UserAccount) UpdateEmail(email string) {
-	user.email = email
-	user.emailVerified = false
+	user.UnverifiedEmail = email
 }
 
+// Email must be updated before verified
 func (user *UserAccount) VerifyEmail(email string) error {
-	if user.email != email {
+	if user.UnverifiedEmail != email {
 		return errors.New("email has changed")
 	}
 
-	user.emailVerified = true
+	user.UnverifiedEmail = ""
+	user.Email = email
 	return nil
 }
 
 func generateHash(password string) ([]byte, error) {
 	return scrypt.GenerateFromPassword([]byte(password), scrypt.DefaultParams)
 }
-
-
-
-
