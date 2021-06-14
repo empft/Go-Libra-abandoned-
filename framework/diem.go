@@ -12,7 +12,7 @@ import (
 )
 
 type DiemHandler struct {
-	client diemclient.Client
+	Client diemclient.Client
 	parentVASP *diemkeys.Keys
 	chainId byte
 }
@@ -57,7 +57,7 @@ func (handler *DiemHandler) submitAndWait(sender *diemkeys.Keys, gas Gas, script
 	address := sender.AccountAddress()
 
 Retry:
-	account, err := handler.client.GetAccount(address)
+	account, err := handler.Client.GetAccount(address)
 	if err != nil {
 		if _, ok := err.(*diemclient.StaleResponseError); ok {
 			// retry to hit another server if got stale response
@@ -80,7 +80,7 @@ Retry:
 		handler.chainId,
 	)
 
-	err = handler.client.SubmitTransaction(txn)
+	err = handler.Client.SubmitTransaction(txn)
 	if err != nil {
 		if _, ok := err.(*diemclient.StaleResponseError); !ok {
 			return nil, err
@@ -89,13 +89,13 @@ Retry:
 		// submit probably succeed even hit a stale server
 	}
 
-	return handler.client.WaitForTransaction2(txn, expirationDuration)
+	return handler.Client.WaitForTransaction2(txn, expirationDuration)
 }
 
 // The transaction should be generated and signed client side.
 // The timeout is for waiting time
 func (handler *DiemHandler) SubmitSignedTransactionAndWait(signedTxnHex string, timeout time.Duration) (*diemjsonrpctypes.Transaction, error) {
-	err := handler.client.Submit(signedTxnHex)
+	err := handler.Client.Submit(signedTxnHex)
 	if err != nil {
 		if _, ok := err.(*diemclient.StaleResponseError); !ok {
 			return nil, err
@@ -104,7 +104,7 @@ func (handler *DiemHandler) SubmitSignedTransactionAndWait(signedTxnHex string, 
 		// submit probably succeed even hit a stale server
 	}
 
-	return handler.client.WaitForTransaction3(signedTxnHex, timeout)
+	return handler.Client.WaitForTransaction3(signedTxnHex, timeout)
 }
 
 // Needs to verify user actually hold the private key by signing
@@ -161,7 +161,7 @@ func (handler *DiemHandler) AccountInfo(address string) (*diemjsonrpctypes.Accou
 		return nil, err
 	}
 
-	return handler.client.GetAccount(accAddress)
+	return handler.Client.GetAccount(accAddress)
 }
 
 
