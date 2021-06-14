@@ -4,7 +4,6 @@ import (
 	"testing"
 )
 
-var logurl = ("https://alfajores-blockscout.celo-testnet.org/api")
 var nodeurl = "https://alfajores-forno.celo-testnet.org"
 
 var knownAddress = "5dB994389C7495996A313F830f21015B9F8127B0"
