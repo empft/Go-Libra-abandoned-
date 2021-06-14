@@ -3,16 +3,18 @@ module github.com/stevealexrs/Go-Libra
 go 1.16
 
 require (
+	github.com/celo-org/celo-blockchain v1.3.2
 	github.com/diem/client-sdk-go v1.1.0 // indirect
 	github.com/elithrar/simple-scrypt v1.3.0
 	github.com/go-chi/chi/v5 v5.0.3
 	github.com/go-chi/hostrouter v0.2.0
-	github.com/go-redis/cache/v8 v8.4.0
+	github.com/go-redis/cache/v8 v8.4.1
 	github.com/go-redis/redis/v8 v8.8.2
 	github.com/go-redis/redismock/v8 v8.0.6 // indirect
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/klauspost/compress v1.12.2 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.1 // indirect
+	gitlab.com/stevealexrs/celo-client-lite-go v0.0.0-20210614151619-55acf2e41092 // indirect
 	go.opentelemetry.io/otel v0.20.0 // indirect
 	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
 	golang.org/x/exp v0.0.0-20210503015746-b3083d562e1d // indirect
