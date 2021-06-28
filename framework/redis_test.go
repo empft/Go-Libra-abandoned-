@@ -24,7 +24,7 @@ func SampleDataForRedis(handler *RedisHandler, newsID int) (string, error) {
 		err = handler.Store(ctx, cacheKey, info)
 	}
 
-	return info.(string), err
+	return info, err
 }
 
 func SampleDataForCache(handler *RedisCacheHandler, newsID int) (string, error) {
