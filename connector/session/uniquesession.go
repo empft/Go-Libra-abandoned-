@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	hashSetKey = "veiActive"
+	hashSetKey = "veiA"
 )
 
 type RedisSessionProvider struct {
