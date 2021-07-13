@@ -17,7 +17,10 @@ type sqlRepo struct {
 }
 
 type TransactionRepo sqlRepo
-type TransactionWithInfoRepo sqlRepo
+
+func NewTransactionRepoWithSQL(database *sql.DB) *TransactionRepo {
+	return &TransactionRepo{db: database}
+}
 
 func (r *TransactionRepo) Store(transactions ...entity.Transaction) error {
 	tx, err := r.db.Begin()
@@ -135,7 +138,7 @@ func (r *TransactionRepo) readTransactionFromRows(rows *sql.Rows) ([]entity.Tran
 	return txList, rows.Err()
 }
 
-func (r *TransactionRepo) FetchByWallet(address string) ([]entity.Transaction, error) {
+func (r *TransactionRepo) FetchByWallet(address, chain string) ([]entity.Transaction, error) {
 	query := "SELECT " + 
 			 "transaction.Version, transaction.Chain, " +
 			 "transaction.GasCurrency, transaction.GasPrice, transaction.GasUsed, transaction.MaxGas, " +
@@ -145,7 +148,7 @@ func (r *TransactionRepo) FetchByWallet(address string) ([]entity.Transaction, e
 			 "FROM transaction_event " +
 			 "INNER JOIN transaction " +
 			 "ON transaction_event.Version = transaction.Version AND transaction_event.Chain = transaction.Chain " +
-			 "WHERE transaction_event.From = ? OR transaction_event.To = ?;"
+			 "WHERE (transaction_event.From = ? OR transaction_event.To = ?) AND transaction_event.Chain = ?;"
 	
 	stmt, err := r.db.Prepare(query)
 	if err != nil {
@@ -153,7 +156,7 @@ func (r *TransactionRepo) FetchByWallet(address string) ([]entity.Transaction, e
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query(address, address)
+	rows, err := stmt.Query(address, address, chain)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +178,8 @@ func (r *TransactionRepo) FetchByAccount(accountId int) ([]entity.Transaction, e
 			 "WHERE EXISTS " +
 			 "(SELECT * FROM wallet " +
 			 "WHERE AccountId = ? " +
-			 "AND (transaction_event.From = wallet.Address OR transaction_event.To = wallet.Address));"
+			 "AND ((transaction_event.From = wallet.Address AND transaction_event.Chain = wallet.Chain) " +
+			 "OR (transaction_event.To = wallet.Address AND transaction_event.Chain = wallet.Chain)));"
 	
 	stmt, err := r.db.Prepare(query)
 	if err != nil {
@@ -192,7 +196,7 @@ func (r *TransactionRepo) FetchByAccount(accountId int) ([]entity.Transaction, e
 	return r.readTransactionFromRows(rows)
 }
 
-func (r *TransactionWithInfoRepo) StoreSender(transactions ...entity.TransactionSenderInc) error {
+func (r *TransactionRepo) StoreSender(transactions ...entity.TransactionSenderInc) error {
 	query := "INSERT INTO transaction_sender VALUES "
 	vars := []interface{}{}
 
@@ -214,7 +218,7 @@ func (r *TransactionWithInfoRepo) StoreSender(transactions ...entity.Transaction
 	return err
 }
 
-func (r *TransactionWithInfoRepo) StoreAccount(transactions ...entity.TransactionAccountInc) error {
+func (r *TransactionRepo) StoreAccount(transactions ...entity.TransactionAccountInc) error {
 	query := "INSERT INTO transaction_context VALUES "
 	vars := []interface{}{}
 
@@ -236,7 +240,7 @@ func (r *TransactionWithInfoRepo) StoreAccount(transactions ...entity.Transactio
 	return err
 }
 
-func (r *TransactionWithInfoRepo) UpdateSender(transaction entity.TransactionSenderInc) error {
+func (r *TransactionRepo) UpdateSender(transaction entity.TransactionSenderInc) error {
 	query := "UPDATE transaction_sender SET Message = ?, Refund = ?, Receipt = ? WHERE Version = ? AND Chain = ?;"
 
 	stmt, err := r.db.Prepare(query)
@@ -249,7 +253,7 @@ func (r *TransactionWithInfoRepo) UpdateSender(transaction entity.TransactionSen
 	return err
 }
 
-func (r *TransactionWithInfoRepo) UpdateAccount(transaction entity.TransactionAccountInc) error {
+func (r *TransactionRepo) UpdateAccount(transaction entity.TransactionAccountInc) error {
 	query := "UPDATE transaction_context SET Remark = ? WHERE Version = ? AND Chain = ? AND AccountId = ?;"
 
 	stmt, err := r.db.Prepare(query)
@@ -262,7 +266,7 @@ func (r *TransactionWithInfoRepo) UpdateAccount(transaction entity.TransactionAc
 	return err
 }
 
-func (r *TransactionWithInfoRepo) FetchByWallet(address string) ([]entity.TransactionWithInfo, error) {
+func (r *TransactionRepo) FetchExtraByWallet(address, chain string) ([]entity.TransactionWithInfo, error) {
 	query := "SELECT " + 
 			 "transaction.Version, transaction.Chain, " +
 			 "transaction.GasCurrency, transaction.GasPrice, transaction.GasUsed, transaction.MaxGas, " +
@@ -277,7 +281,7 @@ func (r *TransactionWithInfoRepo) FetchByWallet(address string) ([]entity.Transa
 			 "ON transaction_event.Version = transaction.Version AND transaction_event.Chain = transaction.Chain " +
 			 "LEFT JOIN transaction_sender " +
 			 "ON transaction_event.Version = transaction_sender.Version AND transaction_event.Chain = transaction_sender.Chain " +
-			 "WHERE transaction_event.From = ? OR transaction_event.To = ?;"
+			 "WHERE (transaction_event.From = ? OR transaction_event.To = ?) AND transaction_event.Chain = ?;"
 	
 	stmt, err := r.db.Prepare(query)
 	if err != nil {
@@ -285,7 +289,7 @@ func (r *TransactionWithInfoRepo) FetchByWallet(address string) ([]entity.Transa
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query(address, address)
+	rows, err := stmt.Query(address, address, chain)
 	if err != nil {
 		return nil, err
 	}
@@ -338,10 +342,7 @@ func (r *TransactionWithInfoRepo) FetchByWallet(address string) ([]entity.Transa
 					IsRefund:      bool(isRefund),
 					Receipt:       receipt,
 				},
-				TransactionAccountRemark: entity.TransactionAccountRemark{
-					AccountId: 0,
-					Remark:    "",
-				},
+				TransactionAccountRemark: nil,
 			})
 		} else {
 			txList[len(txList)-1].Events = append(txList[len(txList)-1].Events, ev)
@@ -358,7 +359,7 @@ func (r *TransactionWithInfoRepo) FetchByWallet(address string) ([]entity.Transa
 	return txList, rows.Err()
 }
 
-func (r *TransactionWithInfoRepo) FetchByAccount(accountId int) ([]entity.TransactionWithInfo, error) {
+func (r *TransactionRepo) FetchExtraByAccount(accountId int) ([]entity.TransactionWithInfo, error) {
 	query := "SELECT " + 
 			 "transaction.Version, transaction.Chain, " +
 			 "transaction.GasCurrency, transaction.GasPrice, transaction.GasUsed, transaction.MaxGas, " +
@@ -379,7 +380,8 @@ func (r *TransactionWithInfoRepo) FetchByAccount(accountId int) ([]entity.Transa
 			 "WHERE EXISTS " +
 			 "(SELECT * FROM wallet " +
 			 "WHERE AccountId = ? " +
-			 "AND (transaction_event.From = wallet.Address OR transaction_event.To = wallet.Address));"
+			 "AND ((transaction_event.From = wallet.Address AND transaction_event.Chain = wallet.Chain) " +
+			 "OR (transaction_event.To = wallet.Address AND transaction_event.Chain = wallet.Chain)));"
 	
 	stmt, err := r.db.Prepare(query)
 	if err != nil {
@@ -440,7 +442,7 @@ func (r *TransactionWithInfoRepo) FetchByAccount(accountId int) ([]entity.Transa
 					IsRefund:      bool(isRefund),
 					Receipt:       receipt,
 				},
-				TransactionAccountRemark: entity.TransactionAccountRemark{
+				TransactionAccountRemark: &entity.TransactionAccountRemark{
 					AccountId: accountId,
 					Remark:    remark,
 				},

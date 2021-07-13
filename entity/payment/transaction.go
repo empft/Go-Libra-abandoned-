@@ -45,7 +45,7 @@ type TransactionAccountRemark struct {
 type TransactionWithInfo struct {
 	Transaction
 	TransactionSenderRemark
-	TransactionAccountRemark
+	*TransactionAccountRemark
 }
 
 type TransactionSenderInc struct {
@@ -58,17 +58,27 @@ type TransactionAccountInc struct {
 	TransactionAccountRemark
 }
 
-type TransactionRepository interface {
+type BaseTransactionRepository interface {
 	Store(...Transaction) error
-	FetchByWallet(address string) ([]Transaction, error)
-	FetchByAccount(accountId int) ([]Transaction, error)
-}
-
-type TransactionWithInfoRepository interface {
 	StoreSender(...TransactionSenderInc) error
 	StoreAccount(...TransactionAccountInc) error
 	UpdateSender(TransactionSenderInc) error
 	UpdateAccount(TransactionAccountInc) error
-	FetchByWallet(address string) ([]TransactionWithInfo, error)
-	FetchByAccount(accountId int) ([]TransactionWithInfo, error)
+}
+
+type TransactionRepository interface {
+	BaseTransactionRepository
+	FetchByWallet(address, chain string) ([]Transaction, error)
+	FetchByAccount(accountId int) ([]Transaction, error)
+	FetchExtraByWallet(address, chain string) ([]TransactionWithInfo, error)
+	FetchExtraByAccount(accountId int) ([]TransactionWithInfo, error)
+}
+
+// This repository will fetch from remote sources and store them to local database
+type RefreshingTransactionRepository interface {
+	BaseTransactionRepository
+	FetchByWallet(address, chain string) (<-chan []Transaction, error)
+	FetchByAccount(accountId int) (<-chan []Transaction, error)
+	FetchExtraByWallet(address, chain string) (<-chan []TransactionWithInfo, error)
+	FetchExtraByAccount(accountId int) (<-chan []TransactionWithInfo, error)
 }

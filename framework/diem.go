@@ -167,8 +167,3 @@ func (h *DiemHandler) AccountInfo(address string) (*diemjsonrpctypes.Account, er
 func (h *DiemHandler) Events(eventKey string, start, limit uint64) ([]*diemjsonrpctypes.Event, error) {
 	return h.Client.GetEvents(eventKey, start, limit)
 }
-
-
-
-
-
