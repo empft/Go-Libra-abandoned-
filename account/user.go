@@ -8,7 +8,7 @@ import (
 )
 
 type User struct {
-	Base
+	base
 	InvitationEmail string
 	DisplayName     string
 }
@@ -20,7 +20,7 @@ func NewUserAccountWithPassword(invitationEmail, username, displayName, password
 	}
 	
 	acc := &User{
-		Base: Base{
+		base: base{
 			Id:              nil,
 			Username:        username,
 			PasswordHash:    hash,

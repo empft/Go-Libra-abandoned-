@@ -2,25 +2,23 @@ package account
 
 import (
 	"errors"
-
-	"github.com/stevealexrs/Go-Libra/account/entity"
 )
 
 type RegistrationForm struct {
-	Invitation account.InvitationEmail
+	Invitation InvitationEmail
 	Username string
 	DisplayName string
 	Password string
 	Email string
 }
 
-func sendInvitationMail(invitation *account.InvitationEmail) error {
+func sendInvitationMail(invitation *InvitationEmail) error {
 	//mail := email.NewSender("127.0.0.1", "", "", "")
 	//return mail.SendOTP([]string{invitation.Email}, email.OTP{invitation.Code})
 	return nil
 }
 
-func sendVerificationMail(verification *account.RecoveryEmailVerification) error {
+func sendVerificationMail(verification *RecoveryEmailVerification) error {
 	return nil
 }
 
@@ -33,9 +31,9 @@ func sendPasswordResetMail(userId int, token string) error {
 }
 
 type UserCreator struct {
-	UserRepo account.UserAccountRepository
-	InvitationRepo account.InvitationEmailRepository
-	EmailRepo account.RecoveryEmailVerificationRepository
+	UserRepo UserAccountRepository
+	InvitationRepo InvitationEmailRepository
+	EmailRepo RecoveryEmailVerificationRepository
 }
 
 func (creator *UserCreator) UsernameExist(name string) (bool, error) {
@@ -56,7 +54,7 @@ func (creator *UserCreator) CreateInvitation(email string) error {
 		return errors.New("invitation has already been sent")
 	}
 
-	invitation, err := account.NewInvitationEmail(email)
+	invitation, err := NewInvitationEmail(email)
 	if err != nil {
 		return err
 	}
@@ -94,7 +92,7 @@ func (creator *UserCreator) CreateAccount(form RegistrationForm) error {
 		return errors.New("invitation email code is invalid")
 	}
 
-	acc, err := account.NewUserAccountWithPassword(
+	acc, err := NewUserAccountWithPassword(
 		form.Invitation.Email,
 		form.Username,
 		form.DisplayName,
@@ -128,7 +126,7 @@ func (creator *UserCreator) RequestEmailVerification(name string) error {
 		return sendVerificationMail(emailVerification)
 	}
 
-	emailVerification, err := account.NewRecoveryEmailVerification(
+	emailVerification, err := NewRecoveryEmailVerification(
 		*acc.Id,
 		acc.UnverifiedEmail,
 	)
@@ -163,8 +161,8 @@ func (creator *UserCreator) VerifyEmail(userId int, email, token string) error {
 }
 
 type AccountRecoveryHelper struct {
-	UserRepo account.UserAccountRepository
-	RecoveryRepo account.RecoveryRepository
+	UserRepo UserAccountRepository
+	RecoveryRepo RecoveryRepository
 }
 
 func (helper *AccountRecoveryHelper) RequestUsernameReminder(email string) error {
@@ -200,7 +198,7 @@ func (helper *AccountRecoveryHelper) RequestPasswordReset(name string) error {
 		return sendPasswordResetMail(*acc.Id, recovery.Token)
 	}
 
-	recovery, err := account.NewAccountRecovery(*acc.Id)
+	recovery, err := NewAccountRecovery(*acc.Id)
 	if err != nil {
 		return err
 	}
@@ -232,7 +230,7 @@ func (helper *AccountRecoveryHelper) ResetPassword(userId int, token, password s
 }
 
 type AccountSessionManager struct {
-	UserRepo account.UserAccountRepository
+	UserRepo UserAccountRepository
 }
 
 

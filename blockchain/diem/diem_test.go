@@ -1,4 +1,4 @@
-package framework
+package diem
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"github.com/diem/client-sdk-go/testnet"
 )
 
-var diemHandler = NewDiemHandler(
+var diemHandler = NewDiem(
 	testnet.ChainID,
 	testnet.URL,
 	testnet.GenAccount(),

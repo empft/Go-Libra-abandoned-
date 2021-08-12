@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-
-	"github.com/stevealexrs/Go-Libra/account/entity"
 )
 
 type sqlRepo struct {
@@ -18,7 +16,7 @@ type BusinessRepo sqlRepo
 // The table name is in snake_case while the column name is in PascalCase
 // TODO: Test this if you don't want unexpected thing to happen in database
 
-func (r *UserRepo) Store(account *account.User) (int, error) {
+func (r *UserRepo) Store(account *User) (int, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return 0, err
@@ -59,7 +57,7 @@ func (r *UserRepo) Store(account *account.User) (int, error) {
 	return int(lastId), tx.Commit()
 }
 
-func (r *UserRepo) FetchById(id int) (*account.User, error) {
+func (r *UserRepo) FetchById(id int) (*User, error) {
 	query := "SELECT user.InvitationEmail, account.Username, user.DisplayName, account.PasswordHash, account.RecoveryEmail, account.UnverifiedRecoveryEmail " + 
 			 "FROM user INNER JOIN account ON user.Id = account.Id WHERE user.Id = ? LIMIT 1;"
 
@@ -77,8 +75,8 @@ func (r *UserRepo) FetchById(id int) (*account.User, error) {
 		return nil, err
 	}
 
-	acc := &account.User{
-		Base: account.Base{
+	acc := &User{
+		base: base{
 			Id:              &id,
 			Username:        username,
 			PasswordHash:    passwordHash,
@@ -92,7 +90,7 @@ func (r *UserRepo) FetchById(id int) (*account.User, error) {
 	return acc, nil
 }
 
-func (r *UserRepo) FetchByUsername(name string) (*account.User, error) {
+func (r *UserRepo) FetchByUsername(name string) (*User, error) {
 	query := "SELECT user.Id, user.InvitationEmail, user.DisplayName, account.PasswordHash, account.RecoveryEmail, account.UnverifiedRecoveryEmail " + 
 			 "FROM user INNER JOIN account ON user.Id = account.Id WHERE account.Username = ? LIMIT 1;"
 
@@ -111,8 +109,8 @@ func (r *UserRepo) FetchByUsername(name string) (*account.User, error) {
 		return nil, err
 	}
 
-	acc := &account.User{
-		Base: account.Base{
+	acc := &User{
+		base: base{
 			Id:              &id,
 			Username:        name,
 			PasswordHash:    passwordHash,
@@ -126,7 +124,7 @@ func (r *UserRepo) FetchByUsername(name string) (*account.User, error) {
 	return acc, nil
 }
 
-func (r *UserRepo) FetchByEmail(email string) ([]account.User, error) {
+func (r *UserRepo) FetchByEmail(email string) ([]User, error) {
 	if email == "" {
 		return nil, errors.New("email cannot be empty")
 	}
@@ -146,7 +144,7 @@ func (r *UserRepo) FetchByEmail(email string) ([]account.User, error) {
 	}
 	defer rows.Close()
 
-	var accList []account.User
+	var accList []User
 	var errList error
 
 	for rows.Next() {
@@ -159,8 +157,8 @@ func (r *UserRepo) FetchByEmail(email string) ([]account.User, error) {
 			errList = fmt.Errorf("%w; " + errList.Error(), err)
 		}
 
-		accList = append(accList, account.User{
-			Base: account.Base{
+		accList = append(accList, User{
+			base: base{
 				Id:              &id,
 				Username:        username,
 				PasswordHash:    passwordHash,
@@ -179,7 +177,7 @@ func (r *UserRepo) FetchByEmail(email string) ([]account.User, error) {
 }
 
 // Update Username, DisplayName, PasswordHash and Emails
-func (r *UserRepo) Update(account *account.User) error {
+func (r *UserRepo) Update(account *User) error {
 	query := "UPDATE account, user " + 
 			 "SET account.Username = ?, user.DisplayName = ?, account.PasswordHash = ?, account.RecoveryEmail = ?, account.UnverifiedRecoveryEmail = ? " +
 			 "WHERE (user.Id = ? AND user.Id = account.Id);"
@@ -215,7 +213,7 @@ func (r *UserRepo) HasInvitationEmail(email string) (bool, error) {
 	return err != sql.ErrNoRows, nil
 }
 
-func (r *BusinessRepo) Store(account *account.Business) (int, error) {
+func (r *BusinessRepo) Store(account *Business) (int, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return 0, err
@@ -256,7 +254,7 @@ func (r *BusinessRepo) Store(account *account.Business) (int, error) {
 	return int(lastId), tx.Commit()
 }
 
-func (r *BusinessRepo) StoreAsChild(account *account.Business, parentId int) (int, error) {
+func (r *BusinessRepo) StoreAsChild(account *Business, parentId int) (int, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return 0, err
@@ -310,7 +308,7 @@ func (r *BusinessRepo) StoreAsChild(account *account.Business, parentId int) (in
 	return int(lastId), tx.Commit()
 }
 
-func (r *BusinessRepo) StoreWithIdaccount(account *account.Business, identity *account.BusinessIdentity) (int, error) {
+func (r *BusinessRepo) StoreWithIdaccount(account *Business, identity *BusinessIdentity) (int, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return 0, err
@@ -363,7 +361,7 @@ func (r *BusinessRepo) StoreWithIdaccount(account *account.Business, identity *a
 	return int(lastId), tx.Commit()
 }
 
-func (r *BusinessRepo) FetchById(id int) (*account.Business, error) {
+func (r *BusinessRepo) FetchById(id int) (*Business, error) {
 	query := "SELECT account.Username, business.DisplayName, business.DisplayNameVerified, account.PasswordHash, account.RecoveryEmail, account.UnverifiedRecoveryEmail " + 
 			 "FROM user INNER JOIN account ON business.Id = account.Id WHERE business.Id = ? LIMIT 1;"
 
@@ -382,15 +380,15 @@ func (r *BusinessRepo) FetchById(id int) (*account.Business, error) {
 		return nil, err
 	}
 
-	acc := &account.Business{
-		Base: account.Base{
+	acc := &Business{
+		base: base{
 			Id:              &id,
 			Username:        username,
 			PasswordHash:    passwordHash,
 			Email:           email,
 			UnverifiedEmail: unverifiedEmail,
 		},
-		BusinessName: account.BusinessName{
+		BusinessName: BusinessName{
 			Name:     displayName,
 			Verified: displayNameVerified,
 		},
@@ -399,7 +397,7 @@ func (r *BusinessRepo) FetchById(id int) (*account.Business, error) {
 	return acc, nil
 }
 
-func (r *BusinessRepo) FetchByUsername(name string) (*account.Business, error) {
+func (r *BusinessRepo) FetchByUsername(name string) (*Business, error) {
 	query := "SELECT business.Id, business.DisplayName, business.DisplayNameVerified, account.PasswordHash, account.RecoveryEmail, account.UnverifiedRecoveryEmail " + 
 			 "FROM user INNER JOIN account ON business.Id = account.Id WHERE account.Username = ? LIMIT 1;"
 
@@ -419,15 +417,15 @@ func (r *BusinessRepo) FetchByUsername(name string) (*account.Business, error) {
 		return nil, err
 	}
 
-	acc := &account.Business{
-		Base: account.Base{
+	acc := &Business{
+		base: base{
 			Id:              &id,
 			Username:        name,
 			PasswordHash:    passwordHash,
 			Email:           email,
 			UnverifiedEmail: unverifiedEmail,
 		},
-		BusinessName: account.BusinessName{
+		BusinessName: BusinessName{
 			Name:     displayName,
 			Verified: displayNameVerified,
 		},
@@ -435,7 +433,7 @@ func (r *BusinessRepo) FetchByUsername(name string) (*account.Business, error) {
 	return acc, nil
 }
 
-func (r *BusinessRepo) FetchByEmail(email string) ([]account.Business, error) {
+func (r *BusinessRepo) FetchByEmail(email string) ([]Business, error) {
 	if email == "" {
 		return nil, errors.New("email cannot be empty")
 	}
@@ -455,7 +453,7 @@ func (r *BusinessRepo) FetchByEmail(email string) ([]account.Business, error) {
 	}
 	defer rows.Close()
 
-	var accList []account.Business
+	var accList []Business
 	var errList error
 
 	for rows.Next() {
@@ -469,15 +467,15 @@ func (r *BusinessRepo) FetchByEmail(email string) ([]account.Business, error) {
 			errList = fmt.Errorf("%w; " + errList.Error(), err)
 		}
 
-		accList = append(accList, account.Business{
-			Base: account.Base{
+		accList = append(accList, Business{
+			base: base{
 				Id:              &id,
 				Username:        username,
 				PasswordHash:    passwordHash,
 				Email:           email,
 				UnverifiedEmail: unverifiedEmail,
 			},
-			BusinessName: account.BusinessName{
+			BusinessName: BusinessName{
 				Name:     displayName,
 				Verified: displayNameVerified,
 			},
@@ -491,7 +489,7 @@ func (r *BusinessRepo) FetchByEmail(email string) ([]account.Business, error) {
 }
 
 // Update Username, BusinessDisplayName, PasswordHash and Emails
-func (r *BusinessRepo) Update(account *account.Business) error {
+func (r *BusinessRepo) Update(account *Business) error {
 	query := "UPDATE account, business " + 
 			 "SET account.Username = ?, business.DisplayName = ?, business.DisplayNameVerified, account.PasswordHash = ?, account.RecoveryEmail = ?, account.UnverifiedRecoveryEmail = ? " +
 			 "WHERE (business.Id = ? AND business.Id = account.Id);"

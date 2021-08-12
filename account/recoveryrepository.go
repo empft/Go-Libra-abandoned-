@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/stevealexrs/Go-Libra/account/entity"
 	"github.com/stevealexrs/Go-Libra/database/kv"
 	"github.com/stevealexrs/Go-Libra/namespace"
 )
@@ -30,7 +29,7 @@ func (r *RecoveryEmailVerificationRepo) makeKey(accountId int, email string) str
 }
 
 // Store the email verification token for 24 hours
-func (r *RecoveryEmailVerificationRepo) Store(verification *account.RecoveryEmailVerification) error {
+func (r *RecoveryEmailVerificationRepo) Store(verification *RecoveryEmailVerification) error {
 	return r.store.SetWithExpiration(
 		context.Background(),
 		r.makeKey(verification.UserId, verification.Email),
@@ -39,13 +38,13 @@ func (r *RecoveryEmailVerificationRepo) Store(verification *account.RecoveryEmai
 	)
 }
 
-func (r *RecoveryEmailVerificationRepo) Fetch(accountId int, email string) (*account.RecoveryEmailVerification, error) {
+func (r *RecoveryEmailVerificationRepo) Fetch(accountId int, email string) (*RecoveryEmailVerification, error) {
 	token, err := r.store.Get(context.Background(), r.makeKey(accountId, email))
 	if err != nil {
 		return nil, err
 	}
 
-	ver := &account.RecoveryEmailVerification{
+	ver := &RecoveryEmailVerification{
 		UserId: accountId,
 		Email:  email,
 		Token:  token,
@@ -68,7 +67,7 @@ func (r *RecoveryRepo) makeKey(accountId int) string {
 }
 
 // Store the password reset token for 1 hour
-func (r *RecoveryRepo) Store(recovery *account.Recovery) error {
+func (r *RecoveryRepo) Store(recovery *Recovery) error {
 	return r.store.SetWithExpiration(
 		context.Background(),
 		r.makeKey(recovery.UserId),
@@ -77,13 +76,13 @@ func (r *RecoveryRepo) Store(recovery *account.Recovery) error {
 	)
 }
 
-func (r *RecoveryRepo) Fetch(accountId int) (*account.Recovery, error) {
+func (r *RecoveryRepo) Fetch(accountId int) (*Recovery, error) {
 	token, err := r.store.Get(context.Background(), r.makeKey(accountId))
 	if err != nil {
 		return nil, err
 	}
 
-	rec := &account.Recovery{
+	rec := &Recovery{
 		UserId: accountId,
 		Token:  token,
 	}

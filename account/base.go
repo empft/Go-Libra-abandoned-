@@ -1,7 +1,7 @@
 package account
 
 // Basic account structure
-type Base struct {
+type base struct {
 	Id              *int
 	Username        string
 	PasswordHash    []byte

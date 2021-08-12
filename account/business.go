@@ -6,7 +6,7 @@ import (
 )
 
 type Business struct {
-	Base
+	base
 	BusinessName            BusinessName
 }
 
@@ -43,7 +43,7 @@ func NewBusinessAccountWithPassword(username, businessName, password, email stri
 	}
 
 	acc := &Business{
-		Base: Base{
+		base: base{
 			Id:              nil,
 			Username:        username,
 			PasswordHash:    hash,

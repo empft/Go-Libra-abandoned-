@@ -205,6 +205,7 @@ github.com/golang/protobuf v1.4.0-rc.4.0.20200313231945-b860323f09d0/go.mod h1:W
 github.com/golang/protobuf v1.4.0/go.mod h1:jodUvKwWbYaEsadDk5Fwe5c77LiNKVO9IDvqG2KuDX0=
 github.com/golang/protobuf v1.4.1/go.mod h1:U8fpvMrcmy5pZrNK1lt4xCsGvpyWQ/VVv6QDs8UjoX8=
 github.com/golang/protobuf v1.4.2/go.mod h1:oDoupMAO8OvCJWAcko0GGGIgR6R6ocIYbsSw735rRwI=
+github.com/golang/protobuf v1.4.3 h1:JjCZWpVbqXDqFVmTfYWEVTMIYrL/NPdPSCHPJ0T/raM=
 github.com/golang/protobuf v1.4.3/go.mod h1:oDoupMAO8OvCJWAcko0GGGIgR6R6ocIYbsSw735rRwI=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
 github.com/golang/protobuf v1.5.2 h1:ROPKBNFfQgOUMifHyP+KYbvpjbdoFNs+aK7DXlji0Tw=
@@ -544,6 +545,12 @@ gitlab.com/stevealexrs/celo-client-lite-go v0.0.0-20210614151619-55acf2e41092 h1
 gitlab.com/stevealexrs/celo-client-lite-go v0.0.0-20210614151619-55acf2e41092/go.mod h1:V1sIqEhH42v3kO0sMtXmV4iIwkXdCGGJg3bl94RkHkc=
 gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210614171718-42a835796852 h1:CUkgWoi21/t8nU5SEoFNXnE5TLTTY1DzHEEl/qN749A=
 gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210614171718-42a835796852/go.mod h1:ZDs7uaUjmyr3E0HQ5dESPVn+ieiaJBalKXViGxP0plQ=
+gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210805030929-2bbaa64198aa h1:Jbn2aQMs59nvix4IhxK/lrf4V6o6IQQAgK6sgM7/trc=
+gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210805030929-2bbaa64198aa/go.mod h1:ZDs7uaUjmyr3E0HQ5dESPVn+ieiaJBalKXViGxP0plQ=
+gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210806051301-67a5ae20af64 h1:U4RLO/cYeJ0sQq4T/cljQ0+BS+Qn+aJdrT+CZfW8v6o=
+gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210806051301-67a5ae20af64/go.mod h1:ZDs7uaUjmyr3E0HQ5dESPVn+ieiaJBalKXViGxP0plQ=
+gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210806054225-400183ab25e1 h1:kO5rCBusWnoA720VqOJ/Jv85FJQAbTjACF9Nc0VCCZM=
+gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210806054225-400183ab25e1/go.mod h1:ZDs7uaUjmyr3E0HQ5dESPVn+ieiaJBalKXViGxP0plQ=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/etcd v0.0.0-20191023171146-3cf2f69b5738/go.mod h1:dnLIgRNXwCJa5e+c6mIZCrds/GIG4ncV9HhK5PX7jPg=
 go.opencensus.io v0.20.1/go.mod h1:6WKK9ahsWS3RSO+PY9ZHZUfv2irvY6gN279GOPZjmmk=
@@ -781,6 +788,7 @@ google.golang.org/protobuf v1.22.0/go.mod h1:EGpADcykh3NcUnDUJcl1+ZksZNG86OlYog2
 google.golang.org/protobuf v1.23.0/go.mod h1:EGpADcykh3NcUnDUJcl1+ZksZNG86OlYog2l/sGQquU=
 google.golang.org/protobuf v1.23.1-0.20200526195155-81db48ad09cc/go.mod h1:EGpADcykh3NcUnDUJcl1+ZksZNG86OlYog2l/sGQquU=
 google.golang.org/protobuf v1.24.0/go.mod h1:r/3tXBNzIEhYS9I1OUVjXDlt8tc493IdKGjtUeSXeh4=
+google.golang.org/protobuf v1.25.0 h1:Ejskq+SyPohKW+1uil0JJMtmHCgJPJ/qWTxr8qp+R4c=
 google.golang.org/protobuf v1.25.0/go.mod h1:9JNX74DMeImyA3h4bdi1ymwjUzf21/xIlbajtzgsN7c=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
 google.golang.org/protobuf v1.26.0 h1:bxAC2xTBsZGibn2RTntX0oH50xLsqy1OxA9tTL3p/lk=

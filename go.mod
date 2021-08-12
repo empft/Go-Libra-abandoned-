@@ -33,15 +33,12 @@ require (
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.3.4 // indirect
-	gitlab.com/stevealexrs/celo-client-lite-go v0.0.0-20210614151619-55acf2e41092
-	gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210614171718-42a835796852
+	github.com/vmihailenco/msgpack/v5 v5.3.4 // indirect // indirect
+	gitlab.com/stevealexrs/celo-explorer-client-go v0.0.0-20210806054225-400183ab25e1 // indirect
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
 	golang.org/x/exp v0.0.0-20210611181813-f956177b079c // indirect
 	golang.org/x/net v0.0.0-20210610132358-84b48f89b13b // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210611083646-a4fc73990273 // indirect
 	golang.org/x/term v0.0.0-20210503060354-a79de5458b56 // indirect
-	google.golang.org/genproto v0.0.0-20210614143202-012ab6975634 // indirect
-	google.golang.org/grpc v1.38.0
-	google.golang.org/protobuf v1.26.0
 )

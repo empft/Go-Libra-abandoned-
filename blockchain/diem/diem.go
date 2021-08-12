@@ -1,4 +1,4 @@
-package framework
+package diem
 
 import (
 	"time"
@@ -11,7 +11,7 @@ import (
 	"github.com/diem/client-sdk-go/stdlib"
 )
 
-type DiemHandler struct {
+type Handler struct {
 	Client diemclient.Client
 	parentVASP *diemkeys.Keys
 	chainId byte
@@ -45,15 +45,15 @@ func NewVASPAccount(publicKey, privateKey string) (*diemkeys.Keys, error) {
 	return diemkeys.NewKeysFromPublicAndPrivateKeys(public, private), nil
 }
 
-func NewDiemHandler(chainId byte, url string, parentVASP *diemkeys.Keys) *DiemHandler {
-	return &DiemHandler{
+func NewDiem(chainId byte, url string, parentVASP *diemkeys.Keys) *Handler {
+	return &Handler{
 		diemclient.New(chainId, url),
 		parentVASP,
 		chainId,
 	}
 }
 
-func (h *DiemHandler) submitAndWait(sender *diemkeys.Keys, gas Gas, script diemtypes.Script) (*diemjsonrpctypes.Transaction, error) {
+func (h *Handler) submitAndWait(sender *diemkeys.Keys, gas Gas, script diemtypes.Script) (*diemjsonrpctypes.Transaction, error) {
 	address := sender.AccountAddress()
 
 Retry:
@@ -94,7 +94,7 @@ Retry:
 
 // The transaction should be generated and signed client side.
 // The timeout is for waiting time
-func (h *DiemHandler) SubmitSignedTransactionAndWait(signedTxnHex string, timeout time.Duration) (*diemjsonrpctypes.Transaction, error) {
+func (h *Handler) SubmitSignedTransactionAndWait(signedTxnHex string, timeout time.Duration) (*diemjsonrpctypes.Transaction, error) {
 	err := h.Client.Submit(signedTxnHex)
 	if err != nil {
 		if _, ok := err.(*diemclient.StaleResponseError); !ok {
@@ -108,7 +108,7 @@ func (h *DiemHandler) SubmitSignedTransactionAndWait(signedTxnHex string, timeou
 }
 
 // Needs to verify user actually hold the private key by signing
-func (h *DiemHandler) CreateChildAndWait(currency string, address string, authKey string, gas Gas) error {
+func (h *Handler) CreateChildAndWait(currency string, address string, authKey string, gas Gas) error {
 	childAddress, err := diemtypes.MakeAccountAddress(address)
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func (h *DiemHandler) CreateChildAndWait(currency string, address string, authKe
 
 // The sender must be custodial
 // Amount is in microdiem
-func (h *DiemHandler) PeerToPeerTransferAndWait(sender *diemkeys.Keys, recipientAddr string, currency string, amount uint64, metadata []byte, gas Gas) (*diemjsonrpctypes.Transaction, error) {
+func (h *Handler) PeerToPeerTransferAndWait(sender *diemkeys.Keys, recipientAddr string, currency string, amount uint64, metadata []byte, gas Gas) (*diemjsonrpctypes.Transaction, error) {
 	address, err := diemtypes.MakeAccountAddress(recipientAddr)
 	if err != nil {
 		return nil, err
@@ -155,15 +155,11 @@ func (h *DiemHandler) PeerToPeerTransferAndWait(sender *diemkeys.Keys, recipient
 }
 
 // Get account information using its address
-func (h *DiemHandler) AccountInfo(address string) (*diemjsonrpctypes.Account, error) {
+func (h *Handler) AccountInfo(address string) (*diemjsonrpctypes.Account, error) {
 	accAddress, err := diemtypes.MakeAccountAddress(address)
 	if err != nil {
 		return nil, err
 	}
 
 	return h.Client.GetAccount(accAddress)
-}
-
-func (h *DiemHandler) Events(eventKey string, start, limit uint64) ([]*diemjsonrpctypes.Event, error) {
-	return h.Client.GetEvents(eventKey, start, limit)
 }
