@@ -71,30 +71,35 @@ func storeBasicTransaction(ctx context.Context, sqlTx *sql.Tx, txs ...basicTrans
 	return nil
 }
 
-func updateBasicTransaction(ctx context.Context, sqlTx *sql.Tx, txs...basicTransaction) error {
-	txQuery := "INSERT INTO transaction (Version, Chain, Index, GasPrice, GasUsed, GasMax, Time, Status, Hash) VALUES "
-	txVars := []interface{}{}
+func deleteTransactionId(ctx context.Context, sqlTx *sql.Tx, txs...TransactionId) error {
+	txBlockMap := make(map[TransactionId]struct{})
 
 	for _, v := range txs {
-		txQuery += "(?, ?, ?, ?, ?, ?, ?, ?, ?),"
-		txVars = append(txVars, v.Version, v.Chain, v.Index, v.Gas.Price, v.Gas.Used, v.Gas.Max, v.Time, v.Status, v.Hash)
+		txBlockMap[TransactionId{
+			Version: v.Version,
+			Chain: v.Chain,
+			Index: v.Index,
+		}] = struct{}{}
 	}
 
-	txQuery = strings.TrimSuffix(txQuery, ",")
-	txQuery += " ON DUPLICATE KEY UPDATE " + 
-			   "GasPrice = values(GasPrice), " +
-			   "GasUsed = values(GasUsed), " +
-			   "GasMax = values(GasMax), " +
-			   "Time = values(Time), Status = values(Status), Hash = values(Hash);"
+	delQuery := "DELETE FROM transaction WHERE "
+	delVars := []interface{}{}
+	
+	for k, _ := range txBlockMap {
+		delQuery += "(Version = ? AND Chain = ? AND Index = ?) OR "
+		delVars = append(delVars, k.Version, k.Chain, k.Index)
+	}
+	delQuery = strings.TrimSuffix(delQuery, " OR ")
+	delQuery += ";"
 
-	txStmt, err := sqlTx.PrepareContext(ctx, txQuery)
+	delStmt, err := sqlTx.PrepareContext(ctx, delQuery)
 	if err != nil {
 		sqlTx.Rollback()
 		return err
 	}
-	defer txStmt.Close()
+	defer delStmt.Close()
 
-	_, err = txStmt.ExecContext(ctx, txVars...)
+	_, err = delStmt.ExecContext(ctx, delVars...)
 	if err != nil {
 		sqlTx.Rollback()
 		return err
@@ -102,16 +107,7 @@ func updateBasicTransaction(ctx context.Context, sqlTx *sql.Tx, txs...basicTrans
 	return nil
 }
 
-func (r *baseDiemTransactionRepo) StoreDiem(ctx context.Context, txs ...DiemTransaction) error {
-	if len(txs) == 0 {
-		return nil
-	}
-
-	sqlTx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-
+func storeDiemIgnoreDuplicate(ctx context.Context, sqlTx *sql.Tx, txs ...DiemTransaction) error {
 	basicTxs := make([]basicTransaction, 0)
 	for _, v := range txs {
 		basicTxs = append(basicTxs, basicTransaction{
@@ -127,7 +123,7 @@ func (r *baseDiemTransactionRepo) StoreDiem(ctx context.Context, txs ...DiemTran
 		})
 	}
 
-	err = storeBasicTransaction(ctx, sqlTx, basicTxs...)
+	err := storeBasicTransaction(ctx, sqlTx, basicTxs...)
 	if err != nil {
 		return err
 	}
@@ -155,6 +151,23 @@ func (r *baseDiemTransactionRepo) StoreDiem(ctx context.Context, txs ...DiemTran
 		sqlTx.Rollback()
 		return err
 	}
+	return nil
+}
+
+func (r *baseDiemTransactionRepo) StoreDiem(ctx context.Context, txs ...DiemTransaction) error {
+	if len(txs) == 0 {
+		return nil
+	}
+
+	sqlTx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	err = storeDiemIgnoreDuplicate(ctx, sqlTx, txs...)
+	if err != nil {
+		return err
+	}
 
 	return sqlTx.Commit()
 }
@@ -169,53 +182,21 @@ func (r *baseDiemTransactionRepo) UpdateDiem(ctx context.Context, txs ...DiemTra
 		return err
 	}
 
-	basicTxs := make([]basicTransaction, 0)
+	blocks := make([]TransactionId, 0)
 	for _, v := range txs {
-		basicTxs = append(basicTxs, basicTransaction{
-			TransactionBlock: TransactionBlock{
-				Version: v.Version,
-				Chain:   v.Chain,
-			},
-			Index: 	diemIndex,
-			Gas: 	v.Gas,
-			Status: v.Status,
-			Hash:   v.Hash,
-			Time:   v.Time,
+		blocks = append(blocks, TransactionId{
+			Version: v.Version,
+			Chain: v.Chain,
+			Index: diemIndex,
 		})
 	}
-
-	err = updateBasicTransaction(ctx, sqlTx, basicTxs...)
+	err = deleteTransactionId(ctx, sqlTx, blocks...)
 	if err != nil {
 		return err
 	}
 
-	txQuery := "INSERT INTO transaction_diem (Version, Chain, Index, PublicKey, GasCurrency, Currency, Amount, From, To) VALUES "
-	txVars := []interface{}{}
-
-	for _, v := range txs {
-		txQuery += "(?, ?, ?, ?, ?, ?, ?, ?, ?),"
-		txVars = append(txVars, v.Version, v.Chain, diemIndex, v.PublicKey, v.GasCurrency, v.Currency, v.Amount, v.From, v.To)
-	}
-
-	txQuery = strings.TrimSuffix(txQuery, ",")
-	txQuery += " ON DUPLICATE KEY UPDATE " +
-			   "PublicKey = values(PublicKey), " +
-			   "GasCurrency = values(GasCurrency), " +
-			   "Currency = values(Currency), " +
-			   "Amount = values(Amount), " +
-			   "From = values(From), " +
-			   "To = values(To);"
-
-	txStmt, err := sqlTx.PrepareContext(ctx, txQuery)
+	err = storeDiemIgnoreDuplicate(ctx, sqlTx, txs...)
 	if err != nil {
-		sqlTx.Rollback()
-		return err
-	}
-	defer txStmt.Close()
-
-	_, err = txStmt.ExecContext(ctx, txVars...)
-	if err != nil {
-		sqlTx.Rollback()
 		return err
 	}
 
@@ -319,45 +300,22 @@ func (r *baseCeloTransactionRepo) UpdateCelo(ctx context.Context, txs ...CeloTra
 		return nil
 	}
 
-	type txBlock struct {
-		Version uint64
-		Chain 	string
-	}
-
-	txBlockMap := make(map[txBlock]struct{})
-
-	for _, v := range txs {
-		txBlockMap[txBlock{
-			Version: v.Version,
-			Chain: v.Chain,
-		}] = struct{}{}
-	}
-
 	sqlTx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	delQuery := "DELETE FROM transaction WHERE "
-	delVars := []interface{}{}
-	
-	for k, _ := range txBlockMap {
-		delQuery += "(Version = ? AND Chain = ?) OR "
-		delVars = append(delVars, k.Version, k.Chain)
+	blocks := make([]TransactionId, 0)
+	for _, v := range txs {
+		blocks = append(blocks, TransactionId{
+			Version: v.Version,
+			Chain: v.Chain,
+			Index: diemIndex,
+		})
 	}
-	delQuery = strings.TrimSuffix(delQuery, " OR ")
-	delQuery += ";"
 
-	delStmt, err := sqlTx.PrepareContext(ctx, delQuery)
+	err = deleteTransactionId(ctx, sqlTx, blocks...)
 	if err != nil {
-		sqlTx.Rollback()
-		return err
-	}
-	defer delStmt.Close()
-
-	_, err = delStmt.ExecContext(ctx, delVars...)
-	if err != nil {
-		sqlTx.Rollback()
 		return err
 	}
 
@@ -404,6 +362,27 @@ func (r *transactionSenderRepo) UpdateSender(ctx context.Context, tx Transaction
 	return err
 }
 
+func (r *transactionSenderRepo) DeleteSender(ctx context.Context, txs ...TransactionId) error {
+	query := "DELETE FROM transaction_sender WHERE "
+	vars := []interface{}{}
+
+	for _, v := range txs {
+		query += "(Version = ? AND Chain = ? AND Index = ?) OR "
+		vars = append(vars, v.Version, v.Chain, v.Index)
+	}
+
+	query = strings.TrimSuffix(query, " OR ")
+	query += ";"
+
+	stmt, err := r.db.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, vars...)
+	return err
+}
 
 func (r *transactionSenderRepo) FetchSender(ctx context.Context, chain string, version uint64, index int) (TransactionSender, error) {
 	query := "SELECT transaction_sender.Message, transaction_sender.Refund " +

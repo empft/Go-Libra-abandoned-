@@ -13,7 +13,14 @@ import (
 )
 
 type TransactionAccountRepo sqlRepo
-type LocalTransactionRepo sqlRepo
+type baseCeloTransactionRepo sqlRepo
+type baseDiemTransactionRepo sqlRepo
+
+type LocalTransactionRepo struct {
+	*baseCeloTransactionRepo
+	*baseDiemTransactionRepo
+	sqlRepo
+}
 
 func (r *TransactionAccountRepo) StoreAccount(ctx context.Context, txs ...TransactionAccount) error {
 	query := "INSERT INTO transaction_context VALUES "
@@ -50,6 +57,28 @@ func (r *TransactionAccountRepo) UpdateAccount(ctx context.Context, tx Transacti
 	return err
 }
 
+func (r *TransactionAccountRepo) DeleteAccount(ctx context.Context, txs ...wallet.TransactionId) error {
+	query := "DELETE FROM transaction_context WHERE "
+	vars := []interface{}{}
+
+	for _, v := range txs {
+		query += "(Version = ? AND Chain = ? AND Index = ?) OR "
+		vars = append(vars, v.Version, v.Chain, v.Index)
+	}
+
+	query = strings.TrimSuffix(query, " OR ")
+	query += ";"
+
+	stmt, err := r.db.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, vars...)
+	return err
+}
+
 func (r *TransactionAccountRepo) FetchAccount(ctx context.Context, chain string, version uint64, index, accountId int) (TransactionAccount, error) {
 	query := "SELECT Message " +
 			 "FROM transaction_context " +
@@ -70,6 +99,348 @@ func (r *TransactionAccountRepo) FetchAccount(ctx context.Context, chain string,
 		},
 	}
 	return tx, err
+}
+
+type basicTransaction struct {
+	wallet.TransactionBlock
+	Index 			 int
+	Gas				 wallet.Gas
+	Status			 string
+	Hash    		 string
+	Time 			 time.Time
+}
+
+const diemIndex = 0
+
+func storeBasicTransaction(ctx context.Context, sqlTx *sql.Tx, txs ...basicTransaction) error {
+	txQuery := "INSERT INTO transaction VALUES "
+	txVars := []interface{}{}
+
+	for _, v := range txs {
+		txQuery += "(?, ?, ?, ?, ?, ?, ?, ?, ?),"
+		txVars = append(txVars, v.Version, v.Chain, v.Index, v.Gas.Price, v.Gas.Used, v.Gas.Max, v.Time, v.Status, v.Hash)
+	}
+
+	txQuery = strings.TrimSuffix(txQuery, ",")
+	txQuery += " ON DUPLICATE KEY UPDATE 0 + 0;"
+
+	txStmt, err := sqlTx.PrepareContext(ctx, txQuery)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	defer txStmt.Close()
+
+	_, err = txStmt.ExecContext(ctx, txVars...)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	return nil
+}
+
+func deleteTransactionId(ctx context.Context, sqlTx *sql.Tx, txs...wallet.TransactionId) error {
+	txBlockMap := make(map[wallet.TransactionId]struct{})
+
+	for _, v := range txs {
+		txBlockMap[wallet.TransactionId{
+			Version: v.Version,
+			Chain: v.Chain,
+			Index: v.Index,
+		}] = struct{}{}
+	}
+
+	delQuery := "DELETE FROM transaction WHERE "
+	delVars := []interface{}{}
+	
+	for k, _ := range txBlockMap {
+		delQuery += "(Version = ? AND Chain = ? AND Index = ?) OR "
+		delVars = append(delVars, k.Version, k.Chain, k.Index)
+	}
+	delQuery = strings.TrimSuffix(delQuery, " OR ")
+	delQuery += ";"
+
+	delStmt, err := sqlTx.PrepareContext(ctx, delQuery)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	defer delStmt.Close()
+
+	_, err = delStmt.ExecContext(ctx, delVars...)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	return nil
+}
+
+func storeTransactionSender(ctx context.Context, sqlTx *sql.Tx, txs ...wallet.TransactionSender) error {
+	query := "INSERT INTO transaction_sender VALUES "
+	vars := []interface{}{}
+
+	isEmpty := true
+	for _, v := range txs {
+		if v.TransactionSenderRemark != (wallet.TransactionSenderRemark{}) {
+			isEmpty = false
+			query += "(?, ?, ?, ?, ?),"
+			vars = append(vars, v.Version, v.Chain, v.Index, v.Message, sqltype.MyBool(v.IsRefund))
+		}
+	}
+	// do not insert value if the structs are empty
+	if isEmpty {
+		return nil
+	}
+
+	query = strings.TrimSuffix(query, ",")
+	query += " ON DUPLICATE KEY UPDATE 0 + 0;"
+
+	stmt, err := sqlTx.PrepareContext(ctx, query)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, vars...)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	return nil
+}
+
+func updateTransactionSender(ctx context.Context, sqlTx *sql.Tx, txs ...wallet.TransactionSender) error {
+	query := "INSERT INTO transaction_sender (Version, Chain, Index, Message, Refund) VALUES "
+	vars := []interface{}{}
+
+	isEmpty := true
+	for _, v := range txs {
+		if v.TransactionSenderRemark != (wallet.TransactionSenderRemark{}) {
+			isEmpty = false
+			query += "(?, ?, ?, ?, ?),"
+			vars = append(vars, v.Version, v.Chain, v.Index, v.Message, sqltype.MyBool(v.IsRefund))
+		}
+	}
+	// do not insert value if the structs are empty
+	if isEmpty {
+		return nil
+	}
+
+	query = strings.TrimSuffix(query, ",")
+	query += " ON DUPLICATE KEY UPDATE " +
+			 "Message = values(Message), " +
+			 "Refund = values(Refund);"
+
+	stmt, err := sqlTx.PrepareContext(ctx, query)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, vars...)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	return nil
+}
+
+func storeTransactionAccount(ctx context.Context, sqlTx *sql.Tx, txs ...TransactionAccount) error {
+	query := "INSERT INTO transaction_context VALUES "
+	vars := []interface{}{}
+
+	isEmpty := true
+	for _, v := range txs {
+		if v.TransactionAccountRemark != (TransactionAccountRemark{}) {
+			isEmpty = false
+			query += "(?, ?, ?, ?, ?),"
+			vars = append(vars, v.Version, v.Chain, v.Index, v.AccountId, v.Message)
+		}
+	}
+	// Do not insert values if structs are empty
+	if isEmpty {
+		return nil
+	}
+
+	query = strings.TrimSuffix(query, ",")
+	query += " ON DUPLICATE KEY UPDATE 0 + 0;"
+
+	stmt, err := sqlTx.PrepareContext(ctx, query)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, vars...)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	return nil
+}
+
+func updateTransactionAccount(ctx context.Context, sqlTx *sql.Tx, txs...TransactionAccount) error {
+	query := "INSERT INTO transaction_context (Version, Chain, Index, AccountId, Message) VALUES "
+	vars := []interface{}{}
+
+	isEmpty := true
+	for _, v := range txs {
+		if v.TransactionAccountRemark != (TransactionAccountRemark{}) {
+			isEmpty = false
+			query += "(?, ?, ?, ?, ?),"
+			vars = append(vars, v.Version, v.Chain, v.Index, v.AccountId, v.Message)
+		}
+	}
+	// Do not insert values if structs are empty
+	if isEmpty {
+		return nil
+	}
+
+	query = strings.TrimSuffix(query, ",")
+	query += " ON DUPLICATE KEY UPDATE " +
+			 "Message = values(Message);"
+
+	stmt, err := sqlTx.PrepareContext(ctx, query)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, vars...)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	return nil
+}
+
+func storeDiemIgnoreDuplicate(ctx context.Context, sqlTx *sql.Tx, txs ...DiemTransaction) error {
+	basicTxs := make([]basicTransaction, 0)
+	for _, v := range txs {
+		basicTxs = append(basicTxs, basicTransaction{
+			TransactionBlock: wallet.TransactionBlock{
+				Version: v.Version,
+				Chain:   v.Chain,
+			},
+			Index: 	diemIndex,
+			Gas: 	v.Gas,
+			Status: v.Status,
+			Hash:   v.Hash,
+			Time:   v.Time,
+		})
+	}
+
+	err := storeBasicTransaction(ctx, sqlTx, basicTxs...)
+	if err != nil {
+		return err
+	}
+
+	txQuery := "INSERT INTO transaction_diem VALUES "
+	txVars := []interface{}{}
+
+	for _, v := range txs {
+		txQuery += "(?, ?, ?, ?, ?, ?, ?, ?, ?),"
+		txVars = append(txVars, v.Version, v.Chain, diemIndex, v.PublicKey, v.GasCurrency, v.Currency, v.Amount, v.From, v.To)
+	}
+
+	txQuery = strings.TrimSuffix(txQuery, ",")
+	txQuery += " ON DUPLICATE KEY UPDATE 0 + 0;"
+
+	txStmt, err := sqlTx.PrepareContext(ctx, txQuery)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	defer txStmt.Close()
+
+	_, err = txStmt.ExecContext(ctx, txVars...)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+
+	accTxs := make([]TransactionAccount, 0)
+	for _, v := range txs {
+		accTxs = append(accTxs, TransactionAccount{
+			v.TransactionBlock,
+			diemIndex,
+			v.TransactionAccountRemark,
+		})
+	}
+
+	err = storeTransactionAccount(ctx, sqlTx, accTxs...)
+	if err != nil {
+		return err
+	}
+
+	senderTxs := make([]wallet.TransactionSender, 0)
+	for _, v := range txs {
+		senderTxs = append(senderTxs, wallet.TransactionSender{
+			diemIndex,
+			v.TransactionBlock,
+			v.TransactionSenderRemark,
+		})
+	}
+
+	err = storeTransactionSender(ctx, sqlTx, senderTxs...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *baseDiemTransactionRepo) StoreDiem(ctx context.Context, txs ...DiemTransaction) error {
+	if len(txs) == 0 {
+		return nil
+	}
+
+	sqlTx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	err = storeDiemIgnoreDuplicate(ctx, sqlTx, txs...)
+	if err != nil {
+		return err
+	}
+
+	return sqlTx.Commit()
+}
+
+func (r *baseDiemTransactionRepo) UpdateDiem(ctx context.Context, txs ...DiemTransaction) error {
+	if len(txs) == 0 {
+		return nil
+	}
+
+	sqlTx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	blocks := make([]wallet.TransactionId, 0)
+	for _, v := range txs {
+		blocks = append(blocks, wallet.TransactionId{
+			Version: v.Version,
+			Chain: v.Chain,
+			Index: diemIndex,
+		})
+	}
+
+	err = deleteTransactionId(ctx, sqlTx, blocks...)
+	if err != nil {
+		return err
+	}
+
+	err = storeDiemIgnoreDuplicate(ctx, sqlTx, txs...)
+	if err != nil {
+		return err
+	}
+
+	return sqlTx.Commit()
 }
 
 func (r *LocalTransactionRepo) FetchDiemByWallet(ctx context.Context, start uint64, addresses ...string) (map[uint64]DiemTransaction, error) {
@@ -99,7 +470,7 @@ func (r *LocalTransactionRepo) FetchDiemByWallet(ctx context.Context, start uint
 	query = strings.TrimSuffix(query, " OR ")
 	query += ");"
 
-	stmt, err := r.db.PrepareContext(ctx, query)
+	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -167,8 +538,42 @@ func (r *LocalTransactionRepo) FetchDiemByWallet(ctx context.Context, start uint
 	return txMap, rows.Err()
 }
 
-func (r *LocalTransactionRepo) FetchDiemByAccount(ctx context.Context, accountId int, start uint64) (map[uint64]DiemTransaction, error) {
+func (r *LocalTransactionRepo) fetchAddressByAccount(ctx context.Context, chain string, accountId int) ([]string, error) {
+	query := "SELECT Address FROM wallet WHERE chain = ? AND AccountId = ?;"
+	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx, accountId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	addresses := make([]string, 0)
+	for rows.Next() {
+		var address string
+
+		err = rows.Scan(&address)
+		if err != nil {
+			return nil, err
+		}
+
+		addresses = append(addresses, address)
+	}
+
+	return addresses, rows.Err()
+}
+
+func (r *LocalTransactionRepo) FetchDiemByAccount(ctx context.Context, accountId int, start uint64) (map[uint64]DiemTransaction, []string, error) {
 	chain := blockchain.DiemChain
+	addresses, err := r.fetchAddressByAccount(ctx, chain, accountId)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	query := "SELECT " + 
 			 "t.Version, t.Index, " +
 			 "t.GasPrice, t.GasUsed, t.MaxGas, " +
@@ -189,15 +594,15 @@ func (r *LocalTransactionRepo) FetchDiemByAccount(ctx context.Context, accountId
 			 fmt.Sprintf("AND (d.From IN (SELECT Address FROM wallet WHERE chain = %s AND AccountId = ?) ", chain) +
 			 fmt.Sprintf("OR d.To IN (SELECT Address FROM wallet WHERE chain = %s AND AccountId = ?));", chain)
 
-	stmt, err := r.db.PrepareContext(ctx, query)
+	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx, accountId, start, accountId, accountId)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
@@ -222,7 +627,7 @@ func (r *LocalTransactionRepo) FetchDiemByAccount(ctx context.Context, accountId
 			&accMessage,
 		)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		txMap[version] = DiemTransaction{
@@ -258,7 +663,155 @@ func (r *LocalTransactionRepo) FetchDiemByAccount(ctx context.Context, accountId
 			},
 		}
 	}
-	return txMap, rows.Err()
+	return txMap, addresses, rows.Err()
+}
+
+func storeCeloIgnoreDuplicate(ctx context.Context, sqlTx *sql.Tx, txs ...CeloTransaction) error {
+	basicTxs := make([]basicTransaction, 0)
+	for _, v := range txs {
+		basicTxs = append(basicTxs, basicTransaction{
+			TransactionBlock: wallet.TransactionBlock{
+				Version: v.Version,
+				Chain:   v.Chain,
+			},
+			Index: 	diemIndex,
+			Gas: 	v.Gas,
+			Status: v.Status,
+			Hash:   v.Hash,
+			Time:   v.Time,
+		})
+	}
+
+	err := storeBasicTransaction(ctx, sqlTx, basicTxs...)
+	if err != nil {
+		return err
+	}
+
+	txQuery := "INSERT INTO transaction_celo VALUES "
+	txVars := []interface{}{}
+
+	trfQuery := "INSERT INTO transaction_celo_transfer VALUES "
+	trfVars := []interface{}{}
+
+	for _, v := range txs {
+		txQuery += "(?, ?, ?, ?, ?, ?),"
+		txVars = append(txVars, v.Version, v.Chain, v.Index, v.GatewayCurrency, v.GatewayFee, v.GatewayRecipient)
+
+		for k, v0 := range v.TransferEvents {
+			trfQuery += "(?, ?, ?, ?, ?, ?, ?, ?),"
+			trfVars = append(txVars, v.Version, v.Chain, v.Index, k, v0.Currency, v0.Amount, v0.From, v0.To)
+		}
+	}
+
+	txQuery = strings.TrimSuffix(txQuery, ",")
+	txQuery += " ON DUPLICATE KEY UPDATE 0 + 0;"
+	trfQuery = strings.TrimSuffix(trfQuery, ",")
+	trfQuery += " ON DUPLICATE KEY UPDATE 0 + 0;"
+
+	txStmt, err := sqlTx.PrepareContext(ctx, txQuery)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	defer txStmt.Close()
+
+	_, err = txStmt.ExecContext(ctx, txVars...)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	
+	trfStmt, err := sqlTx.PrepareContext(ctx, trfQuery)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+	defer trfStmt.Close()
+
+	_, err = trfStmt.ExecContext(ctx, trfVars...)
+	if err != nil {
+		sqlTx.Rollback()
+		return err
+	}
+
+	accTxs := make([]TransactionAccount, 0)
+	for _, v := range txs {
+		accTxs = append(accTxs, TransactionAccount{
+			v.TransactionBlock,
+			diemIndex,
+			v.TransactionAccountRemark,
+		})
+	}
+
+	err = storeTransactionAccount(ctx, sqlTx, accTxs...)
+	if err != nil {
+		return err
+	}
+
+	senderTxs := make([]wallet.TransactionSender, 0)
+	for _, v := range txs {
+		senderTxs = append(senderTxs, wallet.TransactionSender{
+			diemIndex,
+			v.TransactionBlock,
+			v.TransactionSenderRemark,
+		})
+	}
+
+	err = storeTransactionSender(ctx, sqlTx, senderTxs...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *baseCeloTransactionRepo) StoreCelo(ctx context.Context, txs ...CeloTransaction) error {
+	if len(txs) == 0 {
+		return nil
+	}
+
+	sqlTx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	err = storeCeloIgnoreDuplicate(ctx, sqlTx, txs...)
+	if err != nil {
+		return err
+	}
+
+	return sqlTx.Commit()
+}
+
+func (r *baseCeloTransactionRepo) UpdateCelo(ctx context.Context, txs ...CeloTransaction) error {
+	if len(txs) == 0 {
+		return nil
+	}
+
+	sqlTx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	blocks := make([]wallet.TransactionId, 0)
+	for _, v := range txs {
+		blocks = append(blocks, wallet.TransactionId{
+			Version: v.Version,
+			Chain: v.Chain,
+			Index: diemIndex,
+		})
+	}
+
+	err = deleteTransactionId(ctx, sqlTx, blocks...)
+	if err != nil {
+		return err
+	}
+
+	err = storeCeloIgnoreDuplicate(ctx, sqlTx, txs...)
+	if err != nil {
+		return err
+	}
+
+	return sqlTx.Commit()
 }
 
 func (r *LocalTransactionRepo) FetchCeloByWallet(ctx context.Context, start uint64, addresses ...string) (map[uint64]map[int]CeloTransaction, error) {
@@ -287,7 +840,7 @@ func (r *LocalTransactionRepo) FetchCeloByWallet(ctx context.Context, start uint
 	query = strings.TrimSuffix(query, " OR ")
 	query += ");"
 
-	stmt, err := r.db.PrepareContext(ctx, query)
+	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -359,8 +912,13 @@ func (r *LocalTransactionRepo) FetchCeloByWallet(ctx context.Context, start uint
 	return txMap, rows.Err()
 }
 
-func (r *LocalTransactionRepo) FetchCeloByAccount(ctx context.Context, accountId int, start uint64) (map[uint64]map[int]CeloTransaction, error) {
+func (r *LocalTransactionRepo) FetchCeloByAccount(ctx context.Context, accountId int, start uint64) (map[uint64]map[int]CeloTransaction, []string, error) {
 	chain := blockchain.CeloChain
+	addresses, err := r.fetchAddressByAccount(ctx, chain, accountId)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	query := "SELECT " + 
 			 "t.Version, t.Index, " +
 			 "t.GasPrice, t.GasUsed, t.MaxGas, " +
@@ -382,15 +940,15 @@ func (r *LocalTransactionRepo) FetchCeloByAccount(ctx context.Context, accountId
 	query = strings.TrimSuffix(query, " OR ")
 	query += ");"
 
-	stmt, err := r.db.PrepareContext(ctx, query)
+	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx, accountId, start, accountId, accountId)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
@@ -414,7 +972,7 @@ func (r *LocalTransactionRepo) FetchCeloByAccount(ctx context.Context, accountId
 			&accMessage,
 		)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		tEvents := txMap[version][index].TransferEvents
@@ -454,5 +1012,5 @@ func (r *LocalTransactionRepo) FetchCeloByAccount(ctx context.Context, accountId
 			},
 		}
 	}
-	return txMap, rows.Err()
+	return txMap, addresses, rows.Err()
 }

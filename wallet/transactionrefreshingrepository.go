@@ -7,7 +7,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-
 type RefreshingTransactionRepo struct {
 	*LocalTransactionRepo
 	diemBC DiemTxQuery

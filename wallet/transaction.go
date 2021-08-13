@@ -62,9 +62,16 @@ type DiemTransaction struct {
 	Transfer
 }
 
+type TransactionId struct {
+	Version uint64
+	Chain string
+	Index int
+}
+
 type TransactionSenderRepository interface {
 	StoreSender(context.Context, ...TransactionSender) error
 	UpdateSender(context.Context, TransactionSender) error
+	DeleteSender(context.Context, ...TransactionId) error
 	FetchSender(ctx context.Context, chain string, version uint64, index int) (TransactionSender, error)
 }
 
