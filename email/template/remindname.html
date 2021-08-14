@@ -1,0 +1,10 @@
+{{ template "header.html" .Header }}
+<div>
+    {{ .Message }}
+    <ul>
+        {{range .Usernames}}
+        <li>.</li>
+        {{end}}
+    </ul>
+</div>
+{{ template "footer.html" .Footer }}

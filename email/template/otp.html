@@ -1,6 +1,6 @@
-{{ template "header.html" }}
+{{ template "header.html" .Header }}
 <div>
-    Here is your requested code.
+    {{ .Message }}
     <div style="
         font-family:arial,helvetica,sans-serif;
         color:#313131;
@@ -23,4 +23,4 @@
         </p>
     </div>
 </div>
-{{ template "footer.html"}}
+{{ template "footer.html" .Footer }}

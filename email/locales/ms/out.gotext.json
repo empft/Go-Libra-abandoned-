@@ -1,0 +1,55 @@
+{
+    "language": "ms",
+    "messages": [
+        {
+            "id": "An Accessible Payment System",
+            "message": "An Accessible Payment System",
+            "translation": "Sistem Pembayaran yang Mudah"
+        },
+        {
+            "id": "Never log into your account through any links provided in an email.",
+            "message": "Never log into your account through any links provided in an email.",
+            "translation": "Jangan log masuk ke akaun anda melalui pelokasi sumber seragam(URL) yang diberikan dalam e-mel."
+        },
+        {
+            "id": "Verification Code for Invitation Email",
+            "message": "Verification Code for Invitation Email",
+            "translation": "Kod untuk E-mel Institusi"
+        },
+        {
+            "id": "Verification Code for Recovery Email",
+            "message": "Verification Code for Recovery Email",
+            "translation": "Kod untuk E-mel Peribadi"
+        },
+        {
+            "id": "Here is the list of usernames associated with your email:",
+            "message": "Here is the list of usernames associated with your email:",
+            "translation": "Nama pengguna yang berkaitan dengan e-mel anda:"
+        },
+        {
+            "id": "Username Reminder",
+            "message": "Username Reminder",
+            "translation": "Peringatan Nama Pengguna"
+        },
+        {
+            "id": "Hi {Username}, reset your password using the link below.",
+            "message": "Hi {Username}, reset your password using the link below.",
+            "translation": "Tetapkan semula kata laluan %[1]s melalui URL tersebut.",
+            "placeholders": [
+                {
+                    "id": "Username",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "username"
+                }
+            ]
+        },
+        {
+            "id": "Password Reset",
+            "message": "Password Reset",
+            "translation": "Penetapan Semula Kata Laluan"
+        }
+    ]
+}

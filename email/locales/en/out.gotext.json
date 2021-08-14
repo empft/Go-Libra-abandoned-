@@ -1,0 +1,71 @@
+{
+    "language": "en",
+    "messages": [
+        {
+            "id": "An Accessible Payment System",
+            "message": "An Accessible Payment System",
+            "translation": "An Accessible Payment System",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Never log into your account through any links provided in an email.",
+            "message": "Never log into your account through any links provided in an email.",
+            "translation": "Never log into your account through any links provided in an email.",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Verification Code for Invitation Email",
+            "message": "Verification Code for Invitation Email",
+            "translation": "Verification Code for Invitation Email",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Verification Code for Recovery Email",
+            "message": "Verification Code for Recovery Email",
+            "translation": "Verification Code for Recovery Email",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Here is the list of usernames associated with your email:",
+            "message": "Here is the list of usernames associated with your email:",
+            "translation": "Here is the list of usernames associated with your email:",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Username Reminder",
+            "message": "Username Reminder",
+            "translation": "Username Reminder",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Hi {Username}, reset your password using the link below.",
+            "message": "Hi {Username}, reset your password using the link below.",
+            "translation": "Hi {Username}, reset your password using the link below.",
+            "translatorComment": "Copied from source.",
+            "placeholders": [
+                {
+                    "id": "Username",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "username"
+                }
+            ],
+            "fuzzy": true
+        },
+        {
+            "id": "Password Reset",
+            "message": "Password Reset",
+            "translation": "Password Reset",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        }
+    ]
+}

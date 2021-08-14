@@ -1,0 +1,55 @@
+{
+    "language": "zh-Hans",
+    "messages": [
+        {
+            "id": "An Accessible Payment System",
+            "message": "An Accessible Payment System",
+            "translation": "支付系统"
+        },
+        {
+            "id": "Never log into your account through any links provided in an email.",
+            "message": "Never log into your account through any links provided in an email.",
+            "translation": "请不要使用电子邮件中的链接登录你的帐号"
+        },
+        {
+            "id": "Verification Code for Invitation Email",
+            "message": "Verification Code for Invitation Email",
+            "translation": "机构电子邮件的验证码"
+        },
+        {
+            "id": "Verification Code for Recovery Email",
+            "message": "Verification Code for Recovery Email",
+            "translation": "个人电子邮件的验证码"
+        },
+        {
+            "id": "Here is the list of usernames associated with your email:",
+            "message": "Here is the list of usernames associated with your email:",
+            "translation": "以下是链接到你的邮件的用户名："
+        },
+        {
+            "id": "Username Reminder",
+            "message": "Username Reminder",
+            "translation": "提醒用户名"
+        },
+        {
+            "id": "Hi {Username}, reset your password using the link below.",
+            "message": "Hi {Username}, reset your password using the link below.",
+            "translation": "请使用下面的链接来重置%[1]s的密码。",
+            "placeholders": [
+                {
+                    "id": "Username",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "username"
+                }
+            ]
+        },
+        {
+            "id": "Password Reset",
+            "message": "Password Reset",
+            "translation": "重置密码"
+        }
+    ]
+}
