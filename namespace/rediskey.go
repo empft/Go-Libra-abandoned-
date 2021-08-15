@@ -1,8 +1,10 @@
 package namespace
 
 const (
-	RedisRecEmailVer 	  = "recemailver"
-	RedisAccReset	 	  = "accreset"
-	RedisAccSharedSession = "accsharedsession"
+	RedisUserRecEmailVer 	 = "userrecemailver"
+	RedisBusinessRecEmailVer = "businessrecemailver"
+	RedisUserAccReset	 	 = "useraccreset"
+	RedisBusinessAccReset 	 = "businessaccreset"
+	RedisAccSharedSession 	 = "accsharedsession"
 
 )

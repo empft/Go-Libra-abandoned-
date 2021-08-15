@@ -36,7 +36,7 @@ type BusinessAccountRepository interface {
 	HasUsername(ctx context.Context, name string) (bool, error)
 }
 
-func NewBusinessAccountWithPassword(username, businessName, password, email string) (*Business, error) {
+func NewBusinessAccountWithPassword(username, displayName, password, email string) (*Business, error) {
 	hash, err := random.GenerateHash(password)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func NewBusinessAccountWithPassword(username, businessName, password, email stri
 			UnverifiedEmail: email,
 		},
 		BusinessName: BusinessName{
-			Name:     businessName,
+			Name:     displayName,
 			Verified: false,
 		},
 	}

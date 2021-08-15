@@ -5,13 +5,14 @@ import (
 	"errors"
 )
 
-type RegistrationForm struct {
+type UserRegistrationForm struct {
 	Invitation InvitationEmail
 	Username string
 	DisplayName string
 	Password string
 	Email string
 }
+
 type UserCreator struct {
 	UserRepo 	   UserAccountRepository
 	InvitationRepo InvitationEmailRepository
@@ -47,10 +48,10 @@ func (c *UserCreator) CreateInvitation(ctx context.Context, email string) error 
 		return err
 	}
 	
-	return c.Ext.VerifyInvitationEmail(invitation.Code)
+	return c.Ext.VerifyInvitationEmail(ctx, invitation.Email, invitation.Code)
 }
 
-func (c *UserCreator) CreateAccount(ctx context.Context, form RegistrationForm) error {
+func (c *UserCreator) CreateAccountWithInvitation(ctx context.Context, form UserRegistrationForm) error {
 	exist, err := c.UsernameExist(ctx, form.Username)
 	if err != nil {
 		return err
@@ -86,11 +87,42 @@ func (c *UserCreator) CreateAccount(ctx context.Context, form RegistrationForm) 
 		return err
 	}
 	_, err = c.UserRepo.Store(ctx, acc)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return c.RequestEmailVerification(ctx, *acc.Id)
 }
 
-func (c *UserCreator) RequestEmailVerification(ctx context.Context, name string) error {
-	acc, err := c.UserRepo.FetchByUsername(ctx, name)
+func (c *UserCreator) CreateAccount(ctx context.Context, form UserRegistrationForm) error {
+	exist, err := c.UsernameExist(ctx, form.Username)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return errors.New("username exists")
+	}
+
+	acc, err := NewUserAccountWithPassword(
+		form.Invitation.Email,
+		form.Username,
+		form.DisplayName,
+		form.Password,
+		form.Email,
+	)
+	if err != nil {
+		return err
+	}
+	_, err = c.UserRepo.Store(ctx, acc)
+	if err != nil {
+		return err
+	}
+
+	return c.RequestEmailVerification(ctx, *acc.Id)
+}
+
+func (c *UserCreator) RequestEmailVerification(ctx context.Context, id int) error {
+	acc, err := c.UserRepo.FetchById(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -106,7 +138,7 @@ func (c *UserCreator) RequestEmailVerification(ctx context.Context, name string)
 			return err
 		}
 
-		return sendVerificationMail(emailVerification)
+		return c.Ext.VerifyRecoveryEmail(ctx, emailVerification.Email, emailVerification.Token)
 	}
 
 	emailVerification, err := NewRecoveryEmailVerification(
@@ -122,7 +154,7 @@ func (c *UserCreator) RequestEmailVerification(ctx context.Context, name string)
 		return err
 	}
 
-	return sendVerificationMail(emailVerification)
+	return  c.Ext.VerifyRecoveryEmail(ctx, emailVerification.Email, emailVerification.Token)
 }
 
 func (c *UserCreator) VerifyEmail(ctx context.Context, userId int, email, token string) error {
@@ -140,15 +172,21 @@ func (c *UserCreator) VerifyEmail(ctx context.Context, userId int, email, token 
 		return err
 	}
 
-	return acc.VerifyEmail(email)
+	err = acc.VerifyEmail(email)
+	if err != nil {
+		return err
+	}
+
+	return c.UserRepo.Update(ctx, acc)
 }
 
-type AccountRecoveryHelper struct {
-	UserRepo UserAccountRepository
+type UserAccountRecoveryHelper struct {
+	UserRepo 	 UserAccountRepository
 	RecoveryRepo RecoveryRepository
+	Ext 		 ExternalComm
 }
 
-func (helper *AccountRecoveryHelper) RequestUsernameReminder(ctx context.Context, email string) error {
+func (helper *UserAccountRecoveryHelper) RequestUsernameReminder(ctx context.Context, email string) error {
 	accList, err := helper.UserRepo.FetchByEmail(ctx, email)
 	if err != nil {
 		return err
@@ -158,13 +196,19 @@ func (helper *AccountRecoveryHelper) RequestUsernameReminder(ctx context.Context
 	for _, acc := range accList {
 		names = append(names, acc.Username)
 	}
-	return sendUsernameReminderMail(names)
+	return helper.Ext.RemindUsername(ctx, email, names...)
 }
 
-func (helper *AccountRecoveryHelper) RequestPasswordReset(ctx context.Context, name string) error {
+// TODO: Implement password reset link
+/*
+func (helper *UserAccountRecoveryHelper) RequestPasswordReset(ctx context.Context, loc language.Tag, name, email string) error {
 	acc, err := helper.UserRepo.FetchByUsername(ctx, name)
 	if err != nil {
 		return err
+	}
+
+	if acc.email != email {
+		return errors.New("invalid email")
 	}
 
 	exist, err := helper.RecoveryRepo.Exist(ctx, *acc.Id)
@@ -178,7 +222,7 @@ func (helper *AccountRecoveryHelper) RequestPasswordReset(ctx context.Context, n
 			return err
 		}
 
-		return sendPasswordResetMail(*acc.Id, recovery.Token)
+		return helper.Ext.ResetPassword(loc, , )
 	}
 
 	recovery, err := NewAccountRecovery(*acc.Id)
@@ -193,8 +237,9 @@ func (helper *AccountRecoveryHelper) RequestPasswordReset(ctx context.Context, n
 
 	return sendPasswordResetMail(*acc.Id, recovery.Token)
 }
+*/
 
-func (helper *AccountRecoveryHelper) ResetPassword(ctx context.Context, userId int, token, password string) error {
+func (helper *UserAccountRecoveryHelper) ResetPassword(ctx context.Context, userId int, token, password string) error {
 	recovery, err := helper.RecoveryRepo.Fetch(ctx, userId)
 	if err != nil {
 		return err
@@ -209,5 +254,10 @@ func (helper *AccountRecoveryHelper) ResetPassword(ctx context.Context, userId i
 		return err
 	}
 
-	return acc.UpdatePassword(password)
+	err = acc.UpdatePassword(password)
+	if err != nil {
+		return err
+	}
+
+	return helper.UserRepo.Update(ctx, acc)
 }

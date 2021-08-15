@@ -2,7 +2,6 @@ package account
 
 import (
 	"context"
-	"errors"
 
 	"github.com/stevealexrs/Go-Libra/random"
 )
@@ -65,37 +64,4 @@ type InvitationEmailRepository interface {
 	Store(ctx context.Context, invitation InvitationEmail) error
 	Fetch(ctx context.Context, email string) (string, error)
 	Exist(ctx context.Context, email string) (bool, error)
-}
-
-func (user *User) ComparePassword(password string) (bool, error) {
-	err := random.CompareHashAndPassword(user.PasswordHash, password)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (user *User) UpdatePassword(password string) error {
-	hash, err := random.GenerateHash(password)
-	if err != nil {
-		return err
-	}
-	user.PasswordHash = hash
-	return nil
-}
-
-// Email must be verified after changing
-func (user *User) UpdateEmail(email string) {
-	user.UnverifiedEmail = email
-}
-
-// Email must be updated before verified
-func (user *User) VerifyEmail(email string) error {
-	if user.UnverifiedEmail != email {
-		return errors.New("email has changed")
-	}
-
-	user.UnverifiedEmail = ""
-	user.Email = email
-	return nil
 }

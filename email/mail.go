@@ -4,9 +4,10 @@ package email
 
 import (
 	"bytes"
+	"context"
 	"html/template"
 
-	"golang.org/x/text/language"
+	"github.com/stevealexrs/Go-Libra/namespace/reqscope"
 	"golang.org/x/text/message"
 	_ "golang.org/x/text/message/catalog"
 )
@@ -27,8 +28,8 @@ type otpMessage struct {
 	Otp 	string
 }
 
-func (s *Client) VerifyInvitationEmail(loc language.Tag, to string, otp string) error {
-	p := message.NewPrinter(loc)
+func (s *Client) VerifyInvitationEmail(ctx context.Context, to string, otp string) error {
+	p := message.NewPrinter(reqscope.Language(ctx))
 	var defHF = EmailHF{
 		Header: p.Sprintf("An Accessible Payment System"),
 		Footer: p.Sprintf("Never log into your account through any links provided in an email."),
@@ -54,8 +55,8 @@ func (s *Client) VerifyInvitationEmail(loc language.Tag, to string, otp string) 
 	return s.Send([]string{to}, msg)
 }
 
-func (s *Client) VerifyRecoveryEmail(loc language.Tag, to string, otp string) error {
-	p := message.NewPrinter(loc)
+func (s *Client) VerifyRecoveryEmail(ctx context.Context, to string, otp string) error {
+	p := message.NewPrinter(reqscope.Language(ctx))
 	var defHF = EmailHF{
 		Header: p.Sprintf("An Accessible Payment System"),
 		Footer: p.Sprintf("Never log into your account through any links provided in an email."),
@@ -80,8 +81,8 @@ func (s *Client) VerifyRecoveryEmail(loc language.Tag, to string, otp string) er
 	return s.Send([]string{to}, msg)
 }
 
-func (s *Client) RemindUsername(loc language.Tag, to string, names ...string) error {
-	p := message.NewPrinter(loc)
+func (s *Client) RemindUsername(ctx context.Context, to string, names ...string) error {
+	p := message.NewPrinter(reqscope.Language(ctx))
 	var defHF = EmailHF{
 		Header: p.Sprintf("An Accessible Payment System"),
 		Footer: p.Sprintf("Never log into your account through any links provided in an email."),
@@ -112,8 +113,8 @@ func (s *Client) RemindUsername(loc language.Tag, to string, names ...string) er
 	return s.Send([]string{to}, msg)
 }
 
-func (s *Client) ResetPassword(loc language.Tag, to string, username, link string) error {
-	p := message.NewPrinter(loc)
+func (s *Client) ResetPassword(ctx context.Context, to string, username, link string) error {
+	p := message.NewPrinter(reqscope.Language(ctx))
 	var defHF = EmailHF{
 		Header: p.Sprintf("An Accessible Payment System"),
 		Footer: p.Sprintf("Never log into your account through any links provided in an email."),

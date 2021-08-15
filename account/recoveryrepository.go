@@ -6,26 +6,26 @@ import (
 	"time"
 
 	"github.com/stevealexrs/Go-Libra/database/kv"
-	"github.com/stevealexrs/Go-Libra/namespace"
 )
 
-type KVRepo struct {
-	store kv.ExpiringStore
+type kvRepo struct {
+	store 	  kv.ExpiringStore
+	namespace string
 }
 
-type RecoveryEmailVerificationRepo KVRepo
-type RecoveryRepo KVRepo
+type RecoveryEmailVerificationRepo kvRepo
+type RecoveryRepo kvRepo
 
-func NewRecoveryEmailVerificationRepo(store kv.ExpiringStore) *RecoveryEmailVerificationRepo {
+func NewRecoveryEmailVerificationRepo(store kv.ExpiringStore, namespace string) *RecoveryEmailVerificationRepo {
 	return &RecoveryEmailVerificationRepo{store: store}
 }
 
-func NewAccountRecoveryRepo(store kv.ExpiringStore) *RecoveryRepo {
+func NewAccountRecoveryRepo(store kv.ExpiringStore, namespace string) *RecoveryRepo {
 	return &RecoveryRepo{store: store}
 }
 
 func (r *RecoveryEmailVerificationRepo) makeKey(accountId int, email string) string {
-	return namespace.RedisRecEmailVer + ":" + strconv.Itoa(accountId) + ":" + email
+	return r.namespace + ":" + strconv.Itoa(accountId) + ":" + email
 }
 
 // Store the email verification token for 24 hours
@@ -63,7 +63,7 @@ func (r *RecoveryEmailVerificationRepo) Exist(accountId int, email string) (bool
 }
 
 func (r *RecoveryRepo) makeKey(accountId int) string {
-	return namespace.RedisAccReset + ":" + strconv.Itoa(accountId)
+	return r.namespace + ":" + strconv.Itoa(accountId)
 }
 
 // Store the password reset token for 1 hour

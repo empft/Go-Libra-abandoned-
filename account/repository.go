@@ -308,7 +308,7 @@ func (r *BusinessRepo) StoreAsChild(account *Business, parentId int) (int, error
 	return int(lastId), tx.Commit()
 }
 
-func (r *BusinessRepo) StoreWithIdaccount(account *Business, identity *BusinessIdentity) (int, error) {
+func (r *BusinessRepo) StoreWithIdentity(account *Business, identity *BusinessIdentity) (int, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return 0, err
