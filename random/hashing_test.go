@@ -1,9 +1,13 @@
-package random
+package random_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stevealexrs/Go-Libra/random"
+)
 
 func TestHash(t *testing.T) {
-	hash, err := GenerateHash("Password")
+	hash, err := random.GenerateHash("Password")
 	if err != nil {
 		t.Error(err)
 	}

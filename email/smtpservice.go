@@ -8,7 +8,7 @@ type SMTPService struct {
 	auth   smtp.Auth
 }
 
-func NewSMTPService(server, email, password, host string) *SMTPService {
+func NewSMTPService(email, password, host, server string) *SMTPService {
 	auth := smtp.PlainAuth("", email, password, host)
 
 	return &SMTPService{
@@ -21,7 +21,7 @@ func NewSMTPService(server, email, password, host string) *SMTPService {
 func (s *SMTPService) Send(to []string, msg []byte) error {
 	return smtp.SendMail(
 		s.server,
-		nil,
+		s.auth,
 		s.from,
 		to,
 		msg,

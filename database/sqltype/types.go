@@ -3,7 +3,6 @@ package sqltype
 import (
 	"database/sql"
 	"database/sql/driver"
-	"errors"
 	"fmt"
 	"math/big"
 )
@@ -21,7 +20,7 @@ func (b MyBool) Value() (driver.Value, error) {
 func (b *MyBool) Scan(src interface{}) error {
 	v, ok := src.([]byte)
 	if !ok {
-		return errors.New(fmt.Sprintf("Unexpected type for MyBool: %T", src))
+		return fmt.Errorf("Unexpected type for MyBool: %T", src)
 	}
 	*b = v[0] == 1
 	return nil

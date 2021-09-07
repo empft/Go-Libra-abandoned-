@@ -2,6 +2,7 @@ package account
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/stevealexrs/Go-Libra/random"
 )
@@ -14,6 +15,7 @@ type base struct {
 	PasswordHash    []byte
 	Email           string
 	UnverifiedEmail string
+	Deleted			bool
 }
 
 func (base *base) ComparePassword(password string) (bool, error) {
@@ -27,7 +29,7 @@ func (base *base) ComparePassword(password string) (bool, error) {
 func (base *base) UpdatePassword(password string) error {
 	hash, err := random.GenerateHash(password)
 	if err != nil {
-		return err
+		return fmt.Errorf("fail to generate hash: %v", err)
 	}
 	base.PasswordHash = hash
 	return nil

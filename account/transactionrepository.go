@@ -12,14 +12,20 @@ import (
 	"github.com/stevealexrs/Go-Libra/wallet"
 )
 
-type TransactionAccountRepo sqlRepo
-type baseCeloTransactionRepo sqlRepo
-type baseDiemTransactionRepo sqlRepo
+type TransactionAccountRepo struct {
+	DB *sql.DB
+}
+type baseCeloTransactionRepo struct {
+	DB *sql.DB
+}
+type baseDiemTransactionRepo struct {
+	DB *sql.DB
+}
 
 type LocalTransactionRepo struct {
 	*baseCeloTransactionRepo
 	*baseDiemTransactionRepo
-	sqlRepo
+	DB *sql.DB
 }
 
 func (r *TransactionAccountRepo) StoreAccount(ctx context.Context, txs ...TransactionAccount) error {
@@ -34,7 +40,7 @@ func (r *TransactionAccountRepo) StoreAccount(ctx context.Context, txs ...Transa
 	query = strings.TrimSuffix(query, ",")
 	query += ";"
 
-	stmt, err := r.db.PrepareContext(ctx, query)
+	stmt, err := r.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -47,7 +53,7 @@ func (r *TransactionAccountRepo) StoreAccount(ctx context.Context, txs ...Transa
 func (r *TransactionAccountRepo) UpdateAccount(ctx context.Context, tx TransactionAccount) error {
 	query := "UPDATE transaction_context SET Message = ? WHERE Version = ? AND Chain = ? AND Index = ? AND AccountId = ?;"
 
-	stmt, err := r.db.PrepareContext(ctx, query)
+	stmt, err := r.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -69,7 +75,7 @@ func (r *TransactionAccountRepo) DeleteAccount(ctx context.Context, txs ...walle
 	query = strings.TrimSuffix(query, " OR ")
 	query += ";"
 
-	stmt, err := r.db.PrepareContext(ctx, query)
+	stmt, err := r.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -85,7 +91,7 @@ func (r *TransactionAccountRepo) FetchAccount(ctx context.Context, chain string,
 			 "WHERE Version = ? AND Chain = ? AND Index = ? AND AccountId = ?;"
 
 	var message string
-	err := r.db.QueryRowContext(ctx, query, version, chain, index, accountId).Scan(&message)
+	err := r.DB.QueryRowContext(ctx, query, version, chain, index, accountId).Scan(&message)
 	
 	tx := TransactionAccount{
 		TransactionBlock: wallet.TransactionBlock{
@@ -398,7 +404,7 @@ func (r *baseDiemTransactionRepo) StoreDiem(ctx context.Context, txs ...DiemTran
 		return nil
 	}
 
-	sqlTx, err := r.db.BeginTx(ctx, nil)
+	sqlTx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -416,7 +422,7 @@ func (r *baseDiemTransactionRepo) UpdateDiem(ctx context.Context, txs ...DiemTra
 		return nil
 	}
 
-	sqlTx, err := r.db.BeginTx(ctx, nil)
+	sqlTx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -470,7 +476,7 @@ func (r *LocalTransactionRepo) FetchDiemByWallet(ctx context.Context, start uint
 	query = strings.TrimSuffix(query, " OR ")
 	query += ");"
 
-	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
+	stmt, err := r.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -540,7 +546,7 @@ func (r *LocalTransactionRepo) FetchDiemByWallet(ctx context.Context, start uint
 
 func (r *LocalTransactionRepo) fetchAddressByAccount(ctx context.Context, chain string, accountId int) ([]string, error) {
 	query := "SELECT Address FROM wallet WHERE chain = ? AND AccountId = ?;"
-	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
+	stmt, err := r.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +600,7 @@ func (r *LocalTransactionRepo) FetchDiemByAccount(ctx context.Context, accountId
 			 fmt.Sprintf("AND (d.From IN (SELECT Address FROM wallet WHERE chain = %s AND AccountId = ?) ", chain) +
 			 fmt.Sprintf("OR d.To IN (SELECT Address FROM wallet WHERE chain = %s AND AccountId = ?));", chain)
 
-	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
+	stmt, err := r.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -769,7 +775,7 @@ func (r *baseCeloTransactionRepo) StoreCelo(ctx context.Context, txs ...CeloTran
 		return nil
 	}
 
-	sqlTx, err := r.db.BeginTx(ctx, nil)
+	sqlTx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -787,7 +793,7 @@ func (r *baseCeloTransactionRepo) UpdateCelo(ctx context.Context, txs ...CeloTra
 		return nil
 	}
 
-	sqlTx, err := r.db.BeginTx(ctx, nil)
+	sqlTx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -840,7 +846,7 @@ func (r *LocalTransactionRepo) FetchCeloByWallet(ctx context.Context, start uint
 	query = strings.TrimSuffix(query, " OR ")
 	query += ");"
 
-	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
+	stmt, err := r.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -940,7 +946,7 @@ func (r *LocalTransactionRepo) FetchCeloByAccount(ctx context.Context, accountId
 	query = strings.TrimSuffix(query, " OR ")
 	query += ");"
 
-	stmt, err := r.sqlRepo.db.PrepareContext(ctx, query)
+	stmt, err := r.DB.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}

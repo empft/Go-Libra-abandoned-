@@ -1,9 +1,13 @@
-package random
+package random_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stevealexrs/Go-Libra/random"
+)
 
 func TestToken(t *testing.T) {
-	token, err := Token20Byte()
+	token, err := random.Token20Byte()
 	if err != nil {
 		t.Error(err)
 	}

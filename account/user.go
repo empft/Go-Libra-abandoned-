@@ -60,7 +60,7 @@ type UserAccountRepository interface {
 	HasInvitationEmail(ctx context.Context, email string) (bool, error)
 }
 
-type InvitationEmailRepository interface {
+type InvitationEmailVerificationRepository interface {
 	Store(ctx context.Context, invitation InvitationEmail) error
 	Fetch(ctx context.Context, email string) (string, error)
 	Exist(ctx context.Context, email string) (bool, error)

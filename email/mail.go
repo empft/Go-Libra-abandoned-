@@ -28,7 +28,7 @@ type otpMessage struct {
 	Otp 	string
 }
 
-func (s *Client) VerifyInvitationEmail(ctx context.Context, to string, otp string) error {
+func (s *Client) VerifyInvitationEmail(ctx context.Context, to, otp string) error {
 	p := message.NewPrinter(reqscope.Language(ctx))
 	var defHF = EmailHF{
 		Header: p.Sprintf("An Accessible Payment System"),
@@ -55,7 +55,7 @@ func (s *Client) VerifyInvitationEmail(ctx context.Context, to string, otp strin
 	return s.Send([]string{to}, msg)
 }
 
-func (s *Client) VerifyRecoveryEmail(ctx context.Context, to string, otp string) error {
+func (s *Client) VerifyRecoveryEmail(ctx context.Context, to, otp string) error {
 	p := message.NewPrinter(reqscope.Language(ctx))
 	var defHF = EmailHF{
 		Header: p.Sprintf("An Accessible Payment System"),
@@ -113,7 +113,7 @@ func (s *Client) RemindUsername(ctx context.Context, to string, names ...string)
 	return s.Send([]string{to}, msg)
 }
 
-func (s *Client) ResetPassword(ctx context.Context, to string, username, link string) error {
+func (s *Client) ResetPassword(ctx context.Context, to, username, token string) error {
 	p := message.NewPrinter(reqscope.Language(ctx))
 	var defHF = EmailHF{
 		Header: p.Sprintf("An Accessible Payment System"),
@@ -122,14 +122,14 @@ func (s *Client) ResetPassword(ctx context.Context, to string, username, link st
 
 	type resetMessage struct {
 		Message string
-		Link  	string
+		Token   string
 		EmailHF
 	}
 
 	b := new(bytes.Buffer)
 	err := t.ExecuteTemplate(b, "otp.html", resetMessage{
-		Message: p.Sprintf("Hi %s, reset your password using the link below.", username),
-		Link: link,
+		Message: p.Sprintf("Hi %s, reset your password using the token below.", username),
+		Token: token,
 		EmailHF: defHF,
 	})
 	if err != nil {

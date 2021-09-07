@@ -2,41 +2,41 @@ package account
 
 import (
 	"context"
+
 	"github.com/stevealexrs/Go-Libra/random"
 )
 
 type Business struct {
 	base
-	BusinessName            BusinessName
+	BusinessName
+	BusinessIdentity
+	ChildOf 		 *int
 }
 
 type BusinessName struct {
-	Name     string
-	Verified bool
+	DisplayName string
+	Verified 	bool
 }
 
-type BusinessIdentity struct {
-	Id                 *int
+type BusinessIdentity struct {	
 	Name               string
 	RegistrationNumber string
 	Address            string
-	// URL to the document
-	Document string
-	Verified bool
+	// URL of documents
+	Documents 		   []string
+	Verified 		   bool
 }
 
 type BusinessAccountRepository interface {
-	Store(ctx context.Context, account *Business) (int, error)
-	StoreAsChild(ctx context.Context, account *Business, parentId int) (int, error)
-	StoreWithIdentity(ctx context.Context, account *Business, identity *BusinessIdentity) (int, error)
+	Store(ctx context.Context, account *Business, documents [][]byte) (int, error)
 	FetchById(ctx context.Context, id int) (*Business, error)
 	FetchByUsername(ctx context.Context, name string) (*Business, error)
 	FetchByEmail(ctx context.Context, email string) ([]Business, error)
-	Update(ctx context.Context, account *Business) error
+	Update(ctx context.Context, account *Business, documents [][]byte) error
 	HasUsername(ctx context.Context, name string) (bool, error)
 }
 
-func NewBusinessAccountWithPassword(username, displayName, password, email string) (*Business, error) {
+func NewBusinessAccountWithPassword(username, displayName, password, email string, identity *BusinessIdentity) (*Business, error) {
 	hash, err := random.GenerateHash(password)
 	if err != nil {
 		return nil, err
@@ -51,20 +51,19 @@ func NewBusinessAccountWithPassword(username, displayName, password, email strin
 			UnverifiedEmail: email,
 		},
 		BusinessName: BusinessName{
-			Name:     displayName,
+			DisplayName:     displayName,
 			Verified: false,
 		},
+		BusinessIdentity: *identity,
 	}
 	return acc, nil
 }
 
-func NewBusinessIdentity(name, registrationNumber, address, document string) (*BusinessIdentity, error) {
+func NewBusinessIdentity(name, registrationNumber, address string) (*BusinessIdentity, error) {
 	identity := &BusinessIdentity{
-		Id:                 nil,
 		Name:               name,
 		RegistrationNumber: registrationNumber,
 		Address:            address,
-		Document:           document,
 		Verified:           false,
 	}
 	return identity, nil

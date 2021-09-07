@@ -6,7 +6,7 @@ import "context"
 type ZStore interface {
 	ZAdd(ctx context.Context, key string, values ...ZItem) error
 	ZRangeWithScores(ctx context.Context, key string, start int, stop int) ([]ZItem, error)
-	ZRem(ctx context.Context, key string, members ...string) error
+	ZRem(ctx context.Context, key string, members ...string) (int, error)
 	Deleter
 }
 

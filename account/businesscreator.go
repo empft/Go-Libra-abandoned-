@@ -3,8 +3,12 @@ package account
 import (
 	"context"
 	"errors"
-	"io"
+	"strconv"
+	"strings"
 )
+
+const MaxBusinessDocuments = 5
+const MaxBusinessDocumentSize = 1000000 // 1MB
 
 type BusinessCreator struct {
 	BusinessRepo BusinessAccountRepository
@@ -24,20 +28,20 @@ type BusinessRegistrationFormWithIdentity struct {
 	OfficialName 	   string
 	RegistrationNumber string
 	Address   		   string
-	Document		   io.Reader
+	Documents		   [][]byte
 }
 
 func (c *BusinessCreator) UsernameExist(ctx context.Context, name string) (bool, error) {
 	return c.BusinessRepo.HasUsername(ctx, name)
 }
 
-func (c *BusinessCreator) CreateAccount(ctx context.Context, form BusinessRegistrationForm) error {
+func (c *BusinessCreator) CreateAccount(ctx context.Context, form BusinessRegistrationForm) (int, error) {
 	exist, err := c.UsernameExist(ctx, form.Username)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if exist {
-		return errors.New("username exists")
+		return 0, ErrUsernameTaken(ctx)
 	}
 
 	acc, err := NewBusinessAccountWithPassword(
@@ -45,38 +49,36 @@ func (c *BusinessCreator) CreateAccount(ctx context.Context, form BusinessRegist
 		form.DisplayName,
 		form.Password,
 		form.Email,
+		nil,
 	)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	_, err = c.BusinessRepo.Store(ctx, acc)
+	id, err := c.BusinessRepo.Store(ctx, acc, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return c.RequestEmailVerification(ctx, *acc.Id)
+	return id, c.RequestEmailVerification(ctx, *acc.Id)
 }
 
-func (c *BusinessCreator) CreateAccountWithIdentity(ctx context.Context, form BusinessRegistrationFormWithIdentity) error {
+func (c *BusinessCreator) CreateAccountWithIdentity(ctx context.Context, form BusinessRegistrationFormWithIdentity) (int, error) {
 	exist, err := c.UsernameExist(ctx, form.Username)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if exist {
-		return errors.New("username exists")
+		return 0, ErrUsernameTaken(ctx)
 	}
-
-	// TODO: Implement file system
-	form.Document.Read()
+	
 	identity, err := NewBusinessIdentity(
 		form.OfficialName,
 		form.RegistrationNumber,
 		form.Address,
-		,
 	)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	acc, err := NewBusinessAccountWithPassword(
@@ -84,17 +86,18 @@ func (c *BusinessCreator) CreateAccountWithIdentity(ctx context.Context, form Bu
 		form.DisplayName,
 		form.Password,
 		form.Email,
+		identity,
 	)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	_, err = c.BusinessRepo.StoreWithIdentity(ctx, acc, identity)
+	id, err := c.BusinessRepo.Store(ctx, acc, form.Documents)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return c.RequestEmailVerification(ctx, *acc.Id)
+	return id, c.RequestEmailVerification(ctx, *acc.Id)
 }
 
 func (c *BusinessCreator) RequestEmailVerification(ctx context.Context, id int) error {
@@ -109,12 +112,12 @@ func (c *BusinessCreator) RequestEmailVerification(ctx context.Context, id int) 
 	}
 
 	if exist {
-		emailVerification, err := c.EmailRepo.Fetch(ctx, *acc.Id, acc.UnverifiedEmail)
+		code, err := c.EmailRepo.Fetch(ctx, *acc.Id, acc.UnverifiedEmail)
 		if err != nil {
 			return err
 		}
 
-		return c.Ext.VerifyRecoveryEmail(ctx, emailVerification.Email, emailVerification.Token)
+		return c.Ext.VerifyRecoveryEmail(ctx, acc.UnverifiedEmail, code)
 	}
 
 	emailVerification, err := NewRecoveryEmailVerification(
@@ -134,13 +137,13 @@ func (c *BusinessCreator) RequestEmailVerification(ctx context.Context, id int) 
 }
 
 func (c BusinessCreator) VerifyEmail(ctx context.Context, userId int, email, token string) error {
-	emailVerification, err := c.EmailRepo.Fetch(ctx, userId, email)
+	verificationCode, err := c.EmailRepo.Fetch(ctx, userId, email)
 	if err != nil {
 		return err
 	}
 
-	if emailVerification.Token != token {
-		return errors.New("invalid token")
+	if verificationCode != token {
+		return ErrVerificationToken(ctx)
 	}
 
 	acc, err := c.BusinessRepo.FetchById(ctx, userId)
@@ -153,7 +156,24 @@ func (c BusinessCreator) VerifyEmail(ctx context.Context, userId int, email, tok
 		return err
 	}
 
-	return c.BusinessRepo.Update(ctx, acc)
+	return c.BusinessRepo.Update(ctx, acc, nil)
+}
+
+func (c *BusinessCreator) Login(ctx context.Context, username, password string) (int, error) {
+	business, err := c.BusinessRepo.FetchByUsername(ctx, username)
+	if err != nil {
+		return 0, err
+	}
+
+	success, err := business.ComparePassword(password)
+	if err != nil {
+		return 0, err
+	}
+
+	if !success {
+		return 0, ErrInvalidCredentials(ctx)
+	}
+	return *business.Id, nil
 }
 
 type BusinessAccountRecoveryHelper struct {
@@ -175,16 +195,39 @@ func (helper *BusinessAccountRecoveryHelper) RequestUsernameReminder(ctx context
 	return helper.Ext.RemindUsername(ctx, email, names...)
 }
 
-// TODO: Implement password reset link
-/*
-func (helper *BusinessAccountRecoveryHelper) RequestPasswordReset(ctx context.Context, loc language.Tag, name, email string) error {
-	acc, err := helper.BusinessRepo.FetchByUsername(ctx, name)
+func (helper *BusinessAccountRecoveryHelper) separator() string {
+	return "~"
+}
+
+func (helper *BusinessAccountRecoveryHelper) serializeToken(id int, token string) string {
+	return strconv.Itoa(id) + helper.separator() + token
+}
+
+func (helper *BusinessAccountRecoveryHelper) unserializeToken(ctx context.Context, serialized string) (id int, token string, err error) {
+	str := strings.Split(serialized, helper.separator())
+	if len(str) != 2 {
+		return 0, "", ErrPasswordResetToken(ctx)
+	}
+
+	id, err = strconv.Atoi(str[0])
 	if err != nil {
+		return 0, "", ErrPasswordResetToken(ctx)
+	}
+	token = str[1]
+
+	return id, token, nil
+}
+
+func (helper *BusinessAccountRecoveryHelper) RequestPasswordReset(ctx context.Context, name, email string) error {
+	acc, err := helper.BusinessRepo.FetchByUsername(ctx, name)
+	if errors.Is(err, errDoesNotExist) {
+		return ErrRecovery(ctx)
+	} else if err != nil {
 		return err
 	}
 
-	if acc.email != email {
-		return errors.New("invalid email")
+	if acc.Email != email {
+		return ErrRecovery(ctx)
 	}
 
 	exist, err := helper.RecoveryRepo.Exist(ctx, *acc.Id)
@@ -193,12 +236,12 @@ func (helper *BusinessAccountRecoveryHelper) RequestPasswordReset(ctx context.Co
 	}
 
 	if exist {
-		recovery, err := helper.RecoveryRepo.Fetch(ctx, *acc.Id)
+		token, err := helper.RecoveryRepo.Fetch(ctx, *acc.Id)
 		if err != nil {
 			return err
 		}
 
-		return helper.Ext.ResetPassword(loc, , )
+		return helper.Ext.ResetPassword(ctx, email, helper.serializeToken(*acc.Id, token))
 	}
 
 	recovery, err := NewAccountRecovery(*acc.Id)
@@ -211,21 +254,25 @@ func (helper *BusinessAccountRecoveryHelper) RequestPasswordReset(ctx context.Co
 		return err
 	}
 
-	return sendPasswordResetMail(*acc.Id, recovery.Token)
+	return helper.Ext.ResetPassword(ctx, email, helper.serializeToken(*acc.Id, recovery.Token))
 }
-*/
 
-func (helper *BusinessAccountRecoveryHelper) ResetPassword(ctx context.Context, userId int, token, password string) error {
-	recovery, err := helper.RecoveryRepo.Fetch(ctx, userId)
+func (helper *BusinessAccountRecoveryHelper) ResetPassword(ctx context.Context, serializedToken, password string) error {
+	businessId, token, err := helper.unserializeToken(ctx, serializedToken)
+	if err != nil {
+		return err
+	}
+	
+	storedToken, err := helper.RecoveryRepo.Fetch(ctx, businessId)
 	if err != nil {
 		return err
 	}
 
-	if recovery.Token != token {
-		return errors.New("invalid reset token")
+	if storedToken != token {
+		return ErrPasswordResetToken(ctx)
 	}
 
-	acc, err := helper.BusinessRepo.FetchById(ctx, userId)
+	acc, err := helper.BusinessRepo.FetchById(ctx, businessId)
 	if err != nil {
 		return err
 	}
@@ -235,5 +282,5 @@ func (helper *BusinessAccountRecoveryHelper) ResetPassword(ctx context.Context, 
 		return err
 	}
 
-	return helper.BusinessRepo.Update(ctx, acc)
+	return helper.BusinessRepo.Update(ctx, acc, nil)
 }

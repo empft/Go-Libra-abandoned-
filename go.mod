@@ -15,12 +15,14 @@ require (
 	github.com/elithrar/simple-scrypt v1.3.0
 	github.com/go-chi/chi/v5 v5.0.3
 	github.com/go-chi/hostrouter v0.2.0
+	github.com/go-chi/httprate v0.5.1
 	github.com/go-redis/cache/v8 v8.4.1
 	github.com/go-redis/redis/v8 v8.10.0
 	github.com/go-redis/redismock/v8 v8.0.6
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/h2non/filetype v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hdevalence/ed25519consensus v0.0.0-20210430192048-0962ce16b305 // indirect
 	github.com/huin/goupnp v1.0.0 // indirect
