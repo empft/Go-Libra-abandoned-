@@ -159,7 +159,7 @@ func deleteTransactionId(ctx context.Context, sqlTx *sql.Tx, txs...wallet.Transa
 	delQuery := "DELETE FROM transaction WHERE "
 	delVars := []interface{}{}
 	
-	for k, _ := range txBlockMap {
+	for k := range txBlockMap {
 		delQuery += "(Version = ? AND Chain = ? AND Index = ?) OR "
 		delVars = append(delVars, k.Version, k.Chain, k.Index)
 	}
@@ -216,43 +216,6 @@ func storeTransactionSender(ctx context.Context, sqlTx *sql.Tx, txs ...wallet.Tr
 	return nil
 }
 
-func updateTransactionSender(ctx context.Context, sqlTx *sql.Tx, txs ...wallet.TransactionSender) error {
-	query := "INSERT INTO transaction_sender (Version, Chain, Index, Message, Refund) VALUES "
-	vars := []interface{}{}
-
-	isEmpty := true
-	for _, v := range txs {
-		if v.TransactionSenderRemark != (wallet.TransactionSenderRemark{}) {
-			isEmpty = false
-			query += "(?, ?, ?, ?, ?),"
-			vars = append(vars, v.Version, v.Chain, v.Index, v.Message, sqltype.MyBool(v.IsRefund))
-		}
-	}
-	// do not insert value if the structs are empty
-	if isEmpty {
-		return nil
-	}
-
-	query = strings.TrimSuffix(query, ",")
-	query += " ON DUPLICATE KEY UPDATE " +
-			 "Message = values(Message), " +
-			 "Refund = values(Refund);"
-
-	stmt, err := sqlTx.PrepareContext(ctx, query)
-	if err != nil {
-		sqlTx.Rollback()
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.ExecContext(ctx, vars...)
-	if err != nil {
-		sqlTx.Rollback()
-		return err
-	}
-	return nil
-}
-
 func storeTransactionAccount(ctx context.Context, sqlTx *sql.Tx, txs ...TransactionAccount) error {
 	query := "INSERT INTO transaction_context VALUES "
 	vars := []interface{}{}
@@ -272,42 +235,6 @@ func storeTransactionAccount(ctx context.Context, sqlTx *sql.Tx, txs ...Transact
 
 	query = strings.TrimSuffix(query, ",")
 	query += " ON DUPLICATE KEY UPDATE 0 + 0;"
-
-	stmt, err := sqlTx.PrepareContext(ctx, query)
-	if err != nil {
-		sqlTx.Rollback()
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.ExecContext(ctx, vars...)
-	if err != nil {
-		sqlTx.Rollback()
-		return err
-	}
-	return nil
-}
-
-func updateTransactionAccount(ctx context.Context, sqlTx *sql.Tx, txs...TransactionAccount) error {
-	query := "INSERT INTO transaction_context (Version, Chain, Index, AccountId, Message) VALUES "
-	vars := []interface{}{}
-
-	isEmpty := true
-	for _, v := range txs {
-		if v.TransactionAccountRemark != (TransactionAccountRemark{}) {
-			isEmpty = false
-			query += "(?, ?, ?, ?, ?),"
-			vars = append(vars, v.Version, v.Chain, v.Index, v.AccountId, v.Message)
-		}
-	}
-	// Do not insert values if structs are empty
-	if isEmpty {
-		return nil
-	}
-
-	query = strings.TrimSuffix(query, ",")
-	query += " ON DUPLICATE KEY UPDATE " +
-			 "Message = values(Message);"
 
 	stmt, err := sqlTx.PrepareContext(ctx, query)
 	if err != nil {
@@ -386,9 +313,9 @@ func storeDiemIgnoreDuplicate(ctx context.Context, sqlTx *sql.Tx, txs ...DiemTra
 	senderTxs := make([]wallet.TransactionSender, 0)
 	for _, v := range txs {
 		senderTxs = append(senderTxs, wallet.TransactionSender{
-			diemIndex,
-			v.TransactionBlock,
-			v.TransactionSenderRemark,
+			Index: diemIndex,
+			TransactionBlock: v.TransactionBlock,
+			TransactionSenderRemark: v.TransactionSenderRemark,
 		})
 	}
 
@@ -757,9 +684,9 @@ func storeCeloIgnoreDuplicate(ctx context.Context, sqlTx *sql.Tx, txs ...CeloTra
 	senderTxs := make([]wallet.TransactionSender, 0)
 	for _, v := range txs {
 		senderTxs = append(senderTxs, wallet.TransactionSender{
-			diemIndex,
-			v.TransactionBlock,
-			v.TransactionSenderRemark,
+			Index: diemIndex,
+			TransactionBlock: v.TransactionBlock,
+			TransactionSenderRemark: v.TransactionSenderRemark,
 		})
 	}
 

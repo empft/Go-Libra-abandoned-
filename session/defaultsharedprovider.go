@@ -78,7 +78,8 @@ func (sp *DefSharedProvider) fetchAllSessions(ctx context.Context, id int) ([]Sh
 
 func (sp *DefSharedProvider) deleteSession(ctx context.Context, id int, tokens ...string) error {
 	key := sp.idToTokenKey(id)
-	return sp.session.ZRem(ctx, key, tokens...)
+	_, err := sp.session.ZRem(ctx, key, tokens...)
+	return err
 }
 
 func (sp *DefSharedProvider) deleteStore(ctx context.Context, id int) error {

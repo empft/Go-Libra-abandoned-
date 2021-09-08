@@ -18,6 +18,7 @@ import (
 	"github.com/stevealexrs/Go-Libra/account/accountrouter"
 	"github.com/stevealexrs/Go-Libra/database/redisdb"
 	"github.com/stevealexrs/Go-Libra/email"
+	"github.com/stevealexrs/Go-Libra/namespace/redisns"
 	"github.com/stevealexrs/Go-Libra/session"
 )
 
@@ -93,25 +94,25 @@ func apiRouter(sqlDB *sql.DB, redisDB *redisdb.Handler, mailService email.Servic
 	accRouter := accountrouter.New(
 		account.UserCreator{
 			UserRepo:       &userRepo,
-			InvitationRepo: account.NewInvitationEmailVerificationRepo(redisDB, ""),
-			EmailRepo:      account.NewRecoveryEmailVerificationRepo(redisDB, ""),
+			InvitationRepo: account.NewInvitationEmailVerificationRepo(redisDB, redisns.UserInvEmailVer),
+			EmailRepo:      account.NewRecoveryEmailVerificationRepo(redisDB, redisns.UserRecEmailVer),
 			Ext:            &emailClient,
 		},
 		session.NewDefSharedProvider(redisDB, ""),
 		account.UserAccountRecoveryHelper{
 			UserRepo: &userRepo,
-			RecoveryRepo: account.NewAccountRecoveryRepo(redisDB, ""),
+			RecoveryRepo: account.NewAccountRecoveryRepo(redisDB, redisns.UserAccReset),
 			Ext: &emailClient,
 		},
 		account.BusinessCreator{
 			BusinessRepo: &businessRepo,
-			EmailRepo: account.NewRecoveryEmailVerificationRepo(redisDB, ""),
+			EmailRepo: account.NewRecoveryEmailVerificationRepo(redisDB, redisns.BusinessRecEmailVer),
 			Ext: &emailClient,
 		},
 		session.NewDefSharedProvider(redisDB, ""),
 		account.BusinessAccountRecoveryHelper{
 			BusinessRepo: &businessRepo,
-			RecoveryRepo: account.NewAccountRecoveryRepo(redisDB, ""),
+			RecoveryRepo: account.NewAccountRecoveryRepo(redisDB, redisns.BusinessAccReset),
 			Ext: &emailClient,
 		},
 	)

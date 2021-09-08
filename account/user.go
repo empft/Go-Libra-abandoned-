@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	base
+	Base
 	InvitationEmail string
 	DisplayName     string
 }
@@ -19,7 +19,7 @@ func NewUserAccountWithPassword(invitationEmail, username, displayName, password
 	}
 	
 	acc := &User{
-		base: base{
+		Base: Base{
 			Id:              nil,
 			Username:        username,
 			PasswordHash:    hash,
@@ -51,6 +51,7 @@ func NewInvitationEmail(email string) (*InvitationEmail, error) {
 
 
 type UserAccountRepository interface {
+	// returns id
 	Store(ctx context.Context, account *User) (int, error)
 	FetchById(ctx context.Context, id int) (*User, error)
 	FetchByUsername(ctx context.Context, name string) (*User, error)

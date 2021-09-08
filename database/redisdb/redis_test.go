@@ -13,7 +13,7 @@ import (
 	"github.com/stevealexrs/Go-Libra/database/redisdb"
 )
 
-var ctx = context.TODO()
+var ctx = context.Background()
 
 func SampleDataForRedis(handler *redisdb.Handler, newsID int) (string, error) {
 	cacheKey := fmt.Sprintf("news_redis_cache_%d", newsID)

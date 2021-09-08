@@ -134,9 +134,9 @@ func (c *Client) Delete(ctx context.Context, fids ...string) error {
 }
 
 // Get url from fid
-func (c *Client) FormatURL(fid ...string) ([]string, error) {
+func (c *Client) FormatURL(fids ...string) ([]string, error) {
 	urlList := make([]string, 0)
-	for _, v := range fid {
+	for _, v := range fids {
 		myURL, err := c.makePathURL(v)
 		if err != nil {
 			return nil, err

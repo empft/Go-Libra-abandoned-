@@ -5,16 +5,26 @@ package email
 import (
 	"bytes"
 	"context"
+	"flag"
 	"html/template"
+	"os"
+	"strings"
 
 	"github.com/stevealexrs/Go-Libra/namespace/reqscope"
 	"golang.org/x/text/message"
 	_ "golang.org/x/text/message/catalog"
 )
 
+var t = &template.Template{}
 
-const directory = "./email/template/*"
-var t = template.Must(template.ParseGlob(directory))
+func init() {
+	var directory = "./email/template/*"
+	// include both ways to check whether it is testing
+	if flag.Lookup("test.v") == nil || strings.HasSuffix(os.Args[0], ".test") {
+		directory = "./template/*"
+	}
+	t = template.Must(template.ParseGlob(directory))
+}
 
 // Email Header and Footer
 type EmailHF struct {
@@ -45,10 +55,9 @@ func (s *Client) VerifyInvitationEmail(ctx context.Context, to, otp string) erro
 		return err
 	}
 	
-	
 	header := "Subject: " + p.Sprintf("Verification Code for Invitation Email") + "\n" +
 			  "MIME-version: 1.0\n" +
-			  "Content-Type: text/html; charset=\"UTF-8\"\n"
+			  "Content-Type: text/html; charset=\"UTF-8\"\n\n"
 
 	msg := []byte(header + b.String())
 
@@ -74,7 +83,7 @@ func (s *Client) VerifyRecoveryEmail(ctx context.Context, to, otp string) error 
 
 	header := "Subject: " + p.Sprintf("Verification Code for Recovery Email") + "\n" +
 			  "MIME-version: 1.0\n" +
-			  "Content-Type: text/html; charset=\"UTF-8\"\n"
+			  "Content-Type: text/html; charset=\"UTF-8\"\n\n"
 
 	msg := []byte(header + b.String())
 
@@ -95,9 +104,9 @@ func (s *Client) RemindUsername(ctx context.Context, to string, names ...string)
 	}
 
 	b := new(bytes.Buffer)
-	err := t.ExecuteTemplate(b, "otp.html", usernameMessage{
+	err := t.ExecuteTemplate(b, "remindname.html", usernameMessage{
 		Usernames: names,
-		Message: p.Sprintf("Here is the list of usernames associated with your email:"),
+		Message: p.Sprintf("Here is a list of usernames associated with your email:"),
 		EmailHF: defHF,
 	})
 	if err != nil {
@@ -106,7 +115,7 @@ func (s *Client) RemindUsername(ctx context.Context, to string, names ...string)
 
 	header := "Subject: " + p.Sprintf("Username Reminder") + "\n" +
 			  "MIME-version: 1.0\n" +
-			  "Content-Type: text/html; charset=\"UTF-8\"\n"
+			  "Content-Type: text/html; charset=\"UTF-8\"\n\n"
 
 	msg := []byte(header + b.String())
 
@@ -127,7 +136,7 @@ func (s *Client) ResetPassword(ctx context.Context, to, username, token string) 
 	}
 
 	b := new(bytes.Buffer)
-	err := t.ExecuteTemplate(b, "otp.html", resetMessage{
+	err := t.ExecuteTemplate(b, "resetpassword.html", resetMessage{
 		Message: p.Sprintf("Hi %s, reset your password using the token below.", username),
 		Token: token,
 		EmailHF: defHF,
@@ -138,7 +147,7 @@ func (s *Client) ResetPassword(ctx context.Context, to, username, token string) 
 
 	header := "Subject: " + p.Sprintf("Password Reset") + "\n" +
 			  "MIME-version: 1.0\n" +
-			  "Content-Type: text/html; charset=\"UTF-8\"\n"
+			  "Content-Type: text/html; charset=\"UTF-8\"\n\n"
 
 	msg := []byte(header + b.String())
 

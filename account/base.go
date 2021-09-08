@@ -9,7 +9,7 @@ import (
 
 // Basic account structure
 // Business account and user account have the same id space
-type base struct {
+type Base struct {
 	Id              *int
 	Username        string
 	PasswordHash    []byte
@@ -18,7 +18,7 @@ type base struct {
 	Deleted			bool
 }
 
-func (base *base) ComparePassword(password string) (bool, error) {
+func (base *Base) ComparePassword(password string) (bool, error) {
 	err := random.CompareHashAndPassword(base.PasswordHash, password)
 	if err != nil {
 		return false, err
@@ -26,7 +26,7 @@ func (base *base) ComparePassword(password string) (bool, error) {
 	return true, nil
 }
 
-func (base *base) UpdatePassword(password string) error {
+func (base *Base) UpdatePassword(password string) error {
 	hash, err := random.GenerateHash(password)
 	if err != nil {
 		return fmt.Errorf("fail to generate hash: %v", err)
@@ -36,12 +36,12 @@ func (base *base) UpdatePassword(password string) error {
 }
 
 // Email must be verified after changing
-func (base *base) UpdateEmail(email string) {
+func (base *Base) UpdateEmail(email string) {
 	base.UnverifiedEmail = email
 }
 
 // Email must be updated before verified
-func (base *base) VerifyEmail(email string) error {
+func (base *Base) VerifyEmail(email string) error {
 	if base.UnverifiedEmail != email {
 		return errors.New("email has changed")
 	}

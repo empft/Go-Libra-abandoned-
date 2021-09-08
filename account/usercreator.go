@@ -268,7 +268,7 @@ func (helper *UserAccountRecoveryHelper) RequestPasswordReset(ctx context.Contex
 			return err
 		}
 
-		return helper.Ext.ResetPassword(ctx, email, helper.serializeToken(*acc.Id, token))
+		return helper.Ext.ResetPassword(ctx, email, acc.Username, helper.serializeToken(*acc.Id, token))
 	}
 
 	recovery, err := NewAccountRecovery(*acc.Id)
@@ -281,7 +281,7 @@ func (helper *UserAccountRecoveryHelper) RequestPasswordReset(ctx context.Contex
 		return err
 	}
 
-	return helper.Ext.ResetPassword(ctx, email, helper.serializeToken(*acc.Id, recovery.Token))
+	return helper.Ext.ResetPassword(ctx, email, acc.Username, helper.serializeToken(*acc.Id, recovery.Token))
 }
 
 func (helper *UserAccountRecoveryHelper) ResetPassword(ctx context.Context, serializedToken, password string) error {

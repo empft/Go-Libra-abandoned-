@@ -17,7 +17,7 @@ type UserRepo struct {
 }
 type BusinessRepo struct {
 	DB *sql.DB
-	objStore object.Store
+	ObjStore object.Store
 }
 
 // The table name is in snake_case while the column name is in PascalCase
@@ -87,7 +87,7 @@ func (r *UserRepo) FetchById(ctx context.Context, id int) (*User, error) {
 	}
 
 	acc := &User{
-		base: base{
+		Base: Base{
 			Id:              &id,
 			Username:        username,
 			PasswordHash:    passwordHash,
@@ -126,7 +126,7 @@ func (r *UserRepo) FetchByUsername(ctx context.Context, name string) (*User, err
 	}
 
 	acc := &User{
-		base: base{
+		Base: Base{
 			Id:              &id,
 			Username:        name,
 			PasswordHash:    passwordHash,
@@ -176,7 +176,7 @@ func (r *UserRepo) FetchByEmail(ctx context.Context, email string) ([]User, erro
 		}
 
 		accList = append(accList, User{
-			base: base{
+			Base: Base{
 				Id:              &id,
 				Username:        username,
 				PasswordHash:    passwordHash,
@@ -218,7 +218,7 @@ func (r *UserRepo) Update(ctx context.Context, account *User) error {
 func (r *UserRepo) HasUsername(ctx context.Context, name string) (bool, error) {
 	var username string
 	// Fetch Random Data
-	err := r.DB.QueryRowContext(ctx, "SELECT account.Username FROM account WHERE account.Username = ? LIMIT 1;").Scan(&username)
+	err := r.DB.QueryRowContext(ctx, "SELECT Username FROM account WHERE Username = ? LIMIT 1;", name).Scan(&username)
 	if err != nil && err != sql.ErrNoRows {
 		return false, err
 	}
@@ -229,7 +229,7 @@ func (r *UserRepo) HasUsername(ctx context.Context, name string) (bool, error) {
 func (r *UserRepo) HasInvitationEmail(ctx context.Context, email string) (bool, error) {
 	var id int
 	// Fetch Random Data
-	err := r.DB.QueryRowContext(ctx, "SELECT user.Id FROM user WHERE user.InvitationEmail = ? LIMIT 1;").Scan(&id)
+	err := r.DB.QueryRowContext(ctx, "SELECT Id FROM user WHERE InvitationEmail = ? LIMIT 1;", email).Scan(&id)
 	if err != nil && err != sql.ErrNoRows {
 		return false, err
 	}
@@ -248,16 +248,16 @@ func unserializeFileId(fids string) []string {
 }
 
 // returns file id after storing the files
-func (r *BusinessRepo) AddFilesToObjectStore(ctx context.Context, documents ...[]byte) ([]string, error) {
+func (r *BusinessRepo) addFilesToObjectStore(ctx context.Context, documents ...[]byte) ([]string, error) {
 	fids := []string{}
 
 	// add documents to object store
 	for _, v := range documents {
-		fid, err := r.objStore.Set(ctx, bytes.NewReader(v))
+		fid, err := r.ObjStore.Set(ctx, bytes.NewReader(v))
 		if err != nil {
 			// Delete added objects
 			for _, v := range fids {
-				err = r.objStore.Delete(ctx, v)
+				err = r.ObjStore.Delete(ctx, v)
 				if err != nil {
 					// ALERT LOG
 					log.Printf("fail to delete object with id %s: %s/n", v, err)
@@ -309,23 +309,25 @@ func (r *BusinessRepo) Store(ctx context.Context, account *Business, documents [
 	}
 	defer businessStmt.Close()
 
-	_, err = businessStmt.ExecContext(ctx, lastId, account.BusinessName.DisplayName, account.BusinessName.Verified)
+	_, err = businessStmt.ExecContext(ctx, lastId, account.BusinessName.DisplayName, sqltype.MyBool(account.BusinessName.Verified))
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	pcStmt, err := tx.PrepareContext(ctx, "INSERT INTO business_parent_child VALUES(?, ?)")
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-	defer pcStmt.Close()
+	if account.ChildOf != nil {
+		pcStmt, err := tx.PrepareContext(ctx, "INSERT INTO business_parent_child VALUES(?, ?)")
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+		defer pcStmt.Close()
 
-	_, err = pcStmt.ExecContext(ctx, *account.ChildOf, lastId)
-	if err != nil {
-		tx.Rollback()
-		return 0, err
+		_, err = pcStmt.ExecContext(ctx, *account.ChildOf, lastId)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
 	}
 
 	identity := account.BusinessIdentity
@@ -337,7 +339,7 @@ func (r *BusinessRepo) Store(ctx context.Context, account *Business, documents [
 
 		fids := []string{}
 		if documents != nil {
-			fids, err = r.AddFilesToObjectStore(ctx, documents...)
+			fids, err = r.addFilesToObjectStore(ctx, documents...)
 			if err != nil {
 				tx.Rollback()
 				return 0, err
@@ -370,11 +372,12 @@ func (r *BusinessRepo) Store(ctx context.Context, account *Business, documents [
 func (r *BusinessRepo) FetchById(ctx context.Context, id int) (*Business, error) {
 	query := "SELECT acc.Username, b.DisplayName, b.DisplayNameVerified, acc.PasswordHash, " +
 			 "acc.RecoveryEmail, acc.UnverifiedRecoveryEmail, acc.Deleted, " +
-			 "bi.BusinessOfficialName, bi.BusinessRegistrationNumber, bi.BusinessAddress, bi.Documents, bi.Verified, " +
+			 "COALESCE(bi.BusinessOfficialName, ''), COALESCE(bi.BusinessRegistrationNumber, ''), " +
+			 "COALESCE(bi.BusinessAddress, ''), COALESCE(bi.Documents, ''), COALESCE(bi.Verified, b'0'), " +
 			 "COALESCE(child.ParentId, -1) " +
 			 "FROM account AS acc " +
 			 "INNER JOIN business AS b ON b.Id = acc.Id " +
-			 "INNER JOIN business_identity AS bi ON bi.Id = acc.Id " +
+			 "LEFT JOIN business_identity AS bi ON bi.Id = acc.Id " +
 			 "LEFT JOIN business_parent_child AS child ON child.ChildId = acc.Id WHERE acc.Id = ? LIMIT 1;"
 
 	stmt, err := r.DB.PrepareContext(ctx, query)
@@ -384,9 +387,8 @@ func (r *BusinessRepo) FetchById(ctx context.Context, id int) (*Business, error)
 	defer stmt.Close()
 
 	var passwordHash []byte
-	var displayNameVerified bool
 	var username, displayName, email, unverifiedEmail, businessName, businessRegNum, businessAddr, businessDocuments string
-	var deleted, businessVerified sqltype.MyBool
+	var deleted, displayNameVerified, businessVerified sqltype.MyBool
 	var parent int
 
 	err = stmt.QueryRowContext(ctx, id).Scan(
@@ -410,7 +412,7 @@ func (r *BusinessRepo) FetchById(ctx context.Context, id int) (*Business, error)
 		return nil, err
 	}
 
-	fidURL, err := r.objStore.FormatURL(unserializeFileId(businessDocuments)...)
+	fidURL, err := r.ObjStore.FormatURL(unserializeFileId(businessDocuments)...)
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +425,7 @@ func (r *BusinessRepo) FetchById(ctx context.Context, id int) (*Business, error)
 	}
 
 	acc := &Business{
-		base: base{
+		Base: Base{
 			Id:              &id,
 			Username:        username,
 			PasswordHash:    passwordHash,
@@ -433,7 +435,7 @@ func (r *BusinessRepo) FetchById(ctx context.Context, id int) (*Business, error)
 		},
 		BusinessName: BusinessName{
 			DisplayName: displayName,
-			Verified:	 displayNameVerified,
+			Verified:	 bool(displayNameVerified),
 		},
 		BusinessIdentity: BusinessIdentity{
 			Name:               businessName,
@@ -451,11 +453,12 @@ func (r *BusinessRepo) FetchById(ctx context.Context, id int) (*Business, error)
 func (r *BusinessRepo) FetchByUsername(ctx context.Context, name string) (*Business, error) {
 	query := "SELECT acc.Id, b.DisplayName, b.DisplayNameVerified, acc.PasswordHash, " +
 			 "acc.RecoveryEmail, acc.UnverifiedRecoveryEmail, acc.Deleted, " +
-			 "bi.BusinessOfficialName, bi.BusinessRegistrationNumber, bi.BusinessAddress, bi.Documents, bi.Verified, " +
+			 "COALESCE(bi.BusinessOfficialName, ''), COALESCE(bi.BusinessRegistrationNumber, ''), " +
+			 "COALESCE(bi.BusinessAddress, ''), COALESCE(bi.Documents, ''), COALESCE(bi.Verified, b'0'), " +
 			 "COALESCE(child.ParentId, -1) " +
 			 "FROM account AS acc " +
 			 "INNER JOIN business AS b ON b.Id = acc.Id " +
-			 "INNER JOIN business_identity AS bi ON bi.Id = acc.Id " +
+			 "LEFT JOIN business_identity AS bi ON bi.Id = acc.Id " +
 			 "LEFT JOIN business_parent_child AS child ON child.ChildId = acc.Id WHERE acc.Username = ? LIMIT 1;"
 
 	stmt, err := r.DB.PrepareContext(ctx, query)
@@ -466,9 +469,8 @@ func (r *BusinessRepo) FetchByUsername(ctx context.Context, name string) (*Busin
 
 	var id, parent int
 	var passwordHash []byte
-	var displayNameVerified bool
 	var displayName, email, unverifiedEmail, businessName, businessRegNum, businessAddr, businessDocuments string
-	var deleted, businessVerified sqltype.MyBool
+	var deleted, businessVerified, displayNameVerified sqltype.MyBool
 
 	err = stmt.QueryRowContext(ctx, name).Scan(
 		&id,
@@ -491,7 +493,7 @@ func (r *BusinessRepo) FetchByUsername(ctx context.Context, name string) (*Busin
 		return nil, err
 	}
 
-	fidURL, err := r.objStore.FormatURL(unserializeFileId(businessDocuments)...)
+	fidURL, err := r.ObjStore.FormatURL(unserializeFileId(businessDocuments)...)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +506,7 @@ func (r *BusinessRepo) FetchByUsername(ctx context.Context, name string) (*Busin
 	}
 
 	acc := &Business{
-		base: base{
+		Base: Base{
 			Id:              &id,
 			Username:        name,
 			PasswordHash:    passwordHash,
@@ -514,7 +516,7 @@ func (r *BusinessRepo) FetchByUsername(ctx context.Context, name string) (*Busin
 		},
 		BusinessName: BusinessName{
 			DisplayName: displayName,
-			Verified:	 displayNameVerified,
+			Verified:	 bool(displayNameVerified),
 		},
 		BusinessIdentity: BusinessIdentity{
 			Name:               businessName,
@@ -534,11 +536,12 @@ func (r *BusinessRepo) FetchByEmail(ctx context.Context, email string) ([]Busine
 	}
 	query := "SELECT acc.Id, acc.Username, b.DisplayName, b.DisplayNameVerified, acc.PasswordHash, " +
 			 "acc.UnverifiedRecoveryEmail, acc.Deleted, " +
-			 "bi.BusinessOfficialName, bi.BusinessRegistrationNumber, bi.BusinessAddress, bi.Documents, bi.Verified, " +
+			 "COALESCE(bi.BusinessOfficialName, ''), COALESCE(bi.BusinessRegistrationNumber, ''), " +
+			 "COALESCE(bi.BusinessAddress, ''), COALESCE(bi.Documents, ''), COALESCE(bi.Verified, b'0'), " +
 			 "COALESCE(child.ParentId, -1) " +
 			 "FROM account AS acc " +
 			 "INNER JOIN business AS b ON b.Id = acc.Id " +
-			 "INNER JOIN business_identity AS bi ON bi.Id = acc.Id " +
+			 "LEFT JOIN business_identity AS bi ON bi.Id = acc.Id " +
 			 "LEFT JOIN business_parent_child AS child ON child.ChildId = acc.Id WHERE acc.RecoveryEmail = ?;"
 
 	stmt, err := r.DB.PrepareContext(ctx, query)
@@ -558,9 +561,8 @@ func (r *BusinessRepo) FetchByEmail(ctx context.Context, email string) ([]Busine
 	for rows.Next() {
 		var id, parent int
 		var passwordHash []byte
-		var displayNameVerified bool
 		var username, displayName, unverifiedEmail, businessName, businessRegNum, businessAddr, businessDocuments string
-		var deleted, businessVerified sqltype.MyBool
+		var deleted, businessVerified, displayNameVerified sqltype.MyBool
 
 		err = rows.Scan(
 			&id,
@@ -581,7 +583,7 @@ func (r *BusinessRepo) FetchByEmail(ctx context.Context, email string) ([]Busine
 			return nil, err
 		}
 
-		fidURL, err := r.objStore.FormatURL(unserializeFileId(businessDocuments)...)
+		fidURL, err := r.ObjStore.FormatURL(unserializeFileId(businessDocuments)...)
 		if err != nil {
 			return nil, err
 		}
@@ -594,7 +596,7 @@ func (r *BusinessRepo) FetchByEmail(ctx context.Context, email string) ([]Busine
 		}
 
 		accList = append(accList, Business{
-			base: base{
+			Base: Base{
 				Id:              &id,
 				Username:        username,
 				PasswordHash:    passwordHash,
@@ -604,7 +606,7 @@ func (r *BusinessRepo) FetchByEmail(ctx context.Context, email string) ([]Busine
 			},
 			BusinessName: BusinessName{
 				DisplayName: displayName,
-				Verified:	 displayNameVerified,
+				Verified:	 bool(displayNameVerified),
 			},
 			BusinessIdentity: BusinessIdentity{
 				Name:               businessName,
@@ -621,7 +623,7 @@ func (r *BusinessRepo) FetchByEmail(ctx context.Context, email string) ([]Busine
 
 func (r *BusinessRepo) Update(ctx context.Context, account *Business, documents [][]byte) error {
 	var old string
-	err := r.DB.QueryRowContext(ctx, "SELECT bi.Documents FROM business_identity AS bi WHERE bi.AccountId = ? LIMIT 1;", account.Id).Scan(&old)
+	err := r.DB.QueryRowContext(ctx, "SELECT bi.Documents FROM business_identity AS bi WHERE bi.Id = ? LIMIT 1;", account.Id).Scan(&old)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrAccountNotExist(ctx)
@@ -629,7 +631,7 @@ func (r *BusinessRepo) Update(ctx context.Context, account *Business, documents 
 		return err
 	}
 
-	newFID, err := r.objStore.FormatFID(account.Documents...)
+	newFID, err := r.ObjStore.FormatFID(account.Documents...)
 	if err != nil {
 		return err
 	}
@@ -648,23 +650,23 @@ func (r *BusinessRepo) Update(ctx context.Context, account *Business, documents 
 	}
 
 	// delete objects, does not mind error
-	err = r.objStore.Delete(ctx, removeFID...)
+	err = r.ObjStore.Delete(ctx, removeFID...)
 	if err != nil {
 		// ALERT log
 		log.Printf("fail to delete objects %v: %s", removeFID, err)
 	}
 
-	addFID, err := r.AddFilesToObjectStore(ctx, documents...)
+	addFID, err := r.addFilesToObjectStore(ctx, documents...)
 	if err != nil {
 		return err
 	}
 
 	newFID = append(newFID, addFID...)
 
-	query := "UPDATE account AS acc, business AS b, business_identity AS bi" + 
-			 "SET acc.Username = ?, b.DisplayName = ?, b.DisplayNameVerified, acc.PasswordHash = ?, acc.RecoveryEmail = ?, acc.UnverifiedRecoveryEmail = ?, " +
+	query := "UPDATE account AS acc, business AS b, business_identity AS bi " + 
+			 "SET acc.Username = ?, b.DisplayName = ?, b.DisplayNameVerified = ?, acc.PasswordHash = ?, acc.RecoveryEmail = ?, acc.UnverifiedRecoveryEmail = ?, " +
 			 "bi.BusinessOfficialName = ?, bi.BusinessRegistrationNumber = ?, bi.BusinessAddress = ?, bi.Documents = ?, bi.Verified = ? " +
-			 "WHERE (b.Id = ? AND b.Id = acc.Id AND b.Id = bi.AccountId);"
+			 "WHERE (b.Id = ? AND b.Id = acc.Id AND b.Id = bi.Id);"
 
 	stmt, err := r.DB.PrepareContext(ctx, query)
 	if err != nil {
@@ -674,16 +676,16 @@ func (r *BusinessRepo) Update(ctx context.Context, account *Business, documents 
 	_, err = stmt.ExecContext(
 		ctx,
 		account.Username,
-		account.BusinessName.DisplayName,
-		account.BusinessName.Verified,
+		account.DisplayName,
+		sqltype.MyBool(account.BusinessName.Verified),
 		account.PasswordHash,
 		account.Email,
 		account.UnverifiedEmail,
-		account.BusinessName,
+		account.BusinessIdentity.Name,
 		account.RegistrationNumber,
 		account.Address,
 		serializeFileId(newFID),
-		account.BusinessIdentity.Verified,
+		sqltype.MyBool(account.BusinessIdentity.Verified),
 		account.Id,
 	)
 	return err

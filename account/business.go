@@ -7,7 +7,7 @@ import (
 )
 
 type Business struct {
-	base
+	Base
 	BusinessName
 	BusinessIdentity
 	ChildOf 		 *int
@@ -28,6 +28,7 @@ type BusinessIdentity struct {
 }
 
 type BusinessAccountRepository interface {
+	// returns id
 	Store(ctx context.Context, account *Business, documents [][]byte) (int, error)
 	FetchById(ctx context.Context, id int) (*Business, error)
 	FetchByUsername(ctx context.Context, name string) (*Business, error)
@@ -42,8 +43,13 @@ func NewBusinessAccountWithPassword(username, displayName, password, email strin
 		return nil, err
 	}
 
+	businessIdentity := BusinessIdentity{}
+	if identity != nil {
+		businessIdentity = *identity
+	}
+
 	acc := &Business{
-		base: base{
+		Base: Base{
 			Id:              nil,
 			Username:        username,
 			PasswordHash:    hash,
@@ -54,7 +60,7 @@ func NewBusinessAccountWithPassword(username, displayName, password, email strin
 			DisplayName:     displayName,
 			Verified: false,
 		},
-		BusinessIdentity: *identity,
+		BusinessIdentity: businessIdentity,
 	}
 	return acc, nil
 }

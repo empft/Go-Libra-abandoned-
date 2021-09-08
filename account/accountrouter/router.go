@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"github.com/stevealexrs/Go-Libra/account"
 	"github.com/stevealexrs/Go-Libra/mware"
@@ -61,7 +60,7 @@ func (rt *Router) UserHandler() chi.Router {
 		r.Use(httprate.LimitByIP(10, 30*time.Minute))
 
 		r.Get("/exist", errorHandler(rt.userExists()))
-		r.Post("/register", errorHandler(rt.userExists()))
+		r.Post("/register", errorHandler(rt.userRegister()))
 		r.Post("/register-with-invitation", errorHandler(rt.userRegisterWithInvitation()))
 		r.Post("/reset-password", errorHandler(rt.userResetPassword()))
 	})
@@ -105,7 +104,7 @@ func (rt *Router) UserHandler() chi.Router {
 	})
 	
 	r.Get("/logout", errorHandler(rt.userLogout()))
-
+	return r
 }
 
 func (rt *Router) BusinessHandler() chi.Router {

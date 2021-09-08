@@ -10,6 +10,7 @@ type Getter interface {
 }
 
 type Setter interface {
+	// return file id
 	Set(context.Context, io.Reader) (string, error)
 }
 
@@ -19,7 +20,7 @@ type Deleter interface {
 
 // Convert file id to url
 type URLFormatter interface {
-	FormatURL(fid ...string) ([]string, error)
+	FormatURL(fids ...string) ([]string, error)
 }
 
 // Convert url to file id

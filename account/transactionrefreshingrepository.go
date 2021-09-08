@@ -203,7 +203,8 @@ func (r *RefreshingTransactionRepo) FetchCeloByWallet(ctx context.Context, start
 	errs, ctx := errgroup.WithContext(ctx)
 	lock := sync.Mutex{}
 	txsRemote := make(map[uint64]map[int]wallet.CeloTransaction)
-	for _, v := range addresses {
+	for _, addr := range addresses {
+		v := addr
 		errs.Go(func() error {
 			txsTemp, err := r.celoBC.TransactionsByVersion(ctx, v, start)
 			if err != nil {
@@ -308,7 +309,8 @@ func (r *RefreshingTransactionRepo) FetchCeloByAccount(ctx context.Context, acco
 	errs, ctx := errgroup.WithContext(ctx)
 	lock := sync.Mutex{}
 	txsRemote := make(map[uint64]map[int]wallet.CeloTransaction)
-	for _, v := range addresses {
+	for _, addr := range addresses {
+		v := addr
 		errs.Go(func() error {
 			txsTemp, err := r.celoBC.TransactionsByVersion(ctx, v, start)
 			if err != nil {
