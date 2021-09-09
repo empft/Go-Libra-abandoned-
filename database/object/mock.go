@@ -22,9 +22,10 @@ type Mock struct {
 	Address string
 }
 
-func NewMock() *Mock {
+func NewMock(address string) *Mock {
 	return &Mock{
 		store: cache.New(5*time.Minute, 10*time.Minute),
+		Address: address,
 	}
 }
 

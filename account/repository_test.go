@@ -22,7 +22,7 @@ import (
 
 var userRepo *account.UserRepo
 var businessRepo *account.BusinessRepo
-var objectMock = object.NewMock()
+var objectMock = object.NewMock("")
 
 // connect to database and reset database
 func init() {
